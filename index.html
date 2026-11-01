@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>REAPER Touch Console Pro</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+
+    <script src="/main.js"></script>
+
+    <style>
+        :root {
+            --bg-main: #0a0b0d;
+            --bg-panel: #121419;
+            --bg-card: #181a21;
+            --bg-card-alt: #20232d;
+            --bg-fader-track: #060708;
+            --accent-green: #00e676;
+            --accent-orange: #ff9100;
+            --accent-red: #ff1744;
+            --accent-blue: #29b6f6;
+            --text-main: #f0f2f5;
+            --text-muted: #6c7380;
+            --border: #242833;
+            
+            --header-h: 40px;
+            --foot-h: 48px;
+            --font-ui: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .console-header {
+            height: var(--header-h);
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            z-index: 50;
+        }
+
+        .brand-area { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.85rem; }
+        .header-create-track { min-height: 32px; white-space: nowrap; }
+        .header-manage-tracks { min-height: 32px; white-space: nowrap; }
+
+        .connection-pill {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 145, 0, 0.15);
+            color: var(--accent-orange);
+        }
+        .connection-pill.connected { background: rgba(0, 230, 118, 0.15); color: var(--accent-green); }
+
+        .header-tools { display: flex; gap: 6px; }
+        .header-tools .tool-btn { white-space: nowrap; }
+        .tool-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .workspace { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+        .master-strip {
+            width: 110px;
+            background: #0e1014;
+            border-right: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 8px 6px;
+            gap: 6px;
+            z-index: 10;
+        }
+
+        .timecode-box {
+            background: #040506;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px 2px;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .strip-label { text-align: center; font-size: 0.7rem; font-weight: 800; color: var(--text-muted); }
+
+        /* CORRECCIÓN VU-METER Y CONTENEDOR: Se añade min-height para evitar colapso flex */
+        .fader-touch-zone {
+            flex: 1;
+            min-height: 120px;
+            background: var(--bg-fader-track);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            touch-action: none;
+        }
+
+        .fader-slot-line { position: absolute; width: 3px; height: calc(100% - 20px); background: #181b24; border-radius: 2px; }
+
+        .vu-meter-bar {
+            position: absolute;
+            left: 8px; 
+            top: 10px; 
+            height: calc(100% - 20px); 
+            width: 8px;
+            background: #101217; 
+            border-radius: 3px; 
+            overflow: hidden;
+            display: flex; 
+            flex-direction: column-reverse;
+            z-index: 2;
+        }
+        .vu-meter-fill { width: 100%; height: 0%; background: linear-gradient(to top, var(--accent-green) 70%, var(--accent-orange) 88%, var(--accent-red)); transition: height 0.05s ease; }
+
+        .fader-cap {
+            position: absolute; width: 40px; height: 26px;
+            background: linear-gradient(180deg, #323745 0%, #1a1c23 100%);
+            border: 1px solid #4a5163; border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.6);
+            display: flex; align-items: center; justify-content: center; z-index: 5;
+            transform: translateY(0px);
+            pointer-events: none;
+        }
+        .fader-cap-notch { width: 14px; height: 2px; background: var(--accent-blue); }
+
+        .channels-container {
+            flex: 1; 
+            display: flex; 
+            overflow-x: auto; 
+            overflow-y: hidden;
+            padding: 8px; 
+            gap: 8px; 
+            touch-action: pan-x;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .channel-strip {
+            width: 100px; min-width: 100px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 8px; display: flex; flex-direction: column;
+            padding: 6px; gap: 5px;
+        }
+
+        .channel-strip .fader-touch-zone { min-height: 72px; }
+
+        .track-info { text-align: center; background: var(--bg-card-alt); border-radius: 4px; padding: 3px; }
+        .track-idx { font-family: var(--font-mono); font-size: 0.58rem; color: var(--text-muted); font-weight: 700; }
+        .track-title { width: 100%; min-height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; }
+        .track-title-editor { width: 100%; min-width: 0; padding: 1px 3px; color: var(--text-main); background: var(--bg-panel); border: 1px solid var(--accent-blue); border-radius: 3px; font: inherit; font-size: 0.72rem; text-align: center; }
+
+        .db-readout { text-align: center; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; color: var(--text-muted); }
+
+        .pan-control { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .pan-label { color: var(--text-muted); font-size: 0.55rem; font-weight: 800; line-height: 1; }
+        .pan-knob {
+            --pan-angle: 0deg;
+            width: 38px; height: 38px; flex: 0 0 38px; position: relative;
+            border: 1px solid #49515d; border-radius: 50%;
+            background: radial-gradient(circle at 50% 50%, #303541 0 43%, #171a20 46% 100%);
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.45);
+            cursor: ns-resize; touch-action: none; outline: none;
+        }
+        .pan-knob::after {
+            content: ""; position: absolute; width: 2px; height: 10px; left: 50%; top: 4px;
+            border-radius: 2px; background: var(--accent-blue);
+            transform: translateX(-50%) rotate(var(--pan-angle)); transform-origin: 50% 15px;
+        }
+        .pan-knob:focus-visible { box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--accent-blue); }
+        .pan-readout { min-width: 36px; text-align: center; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.58rem; font-weight: 700; }
+
+        .channel-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+        .c-btn {
+            background: var(--bg-card-alt); border: 1px solid var(--border);
+            color: var(--text-muted); font-family: var(--font-ui); border-radius: 4px;
+            padding: 6px 0; font-size: 0.7rem; font-weight: 800; text-align: center;
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+        .c-btn:active { background: var(--border); }
+        .c-btn.mute.active { background: var(--accent-red); color: #fff; border-color: var(--accent-red); }
+        .c-btn.solo.active { background: var(--accent-orange); color: #000; border-color: var(--accent-orange); }
+        .c-btn.rec.active { background: var(--accent-red); color: #fff; border-color: var(--accent-red); }
+        .c-btn.phase.active { background: var(--accent-orange); color: #000; border-color: var(--accent-orange); }
+        .c-btn.sends { color: var(--accent-green); grid-column: span 2; }
+        .c-btn.sends:active { background: var(--accent-green); color: #000; }
+        .c-btn.fx { color: var(--accent-blue); grid-column: span 2; }
+        .c-btn.fx:active { background: var(--accent-blue); color: #000; }
+        .master-fx-btn { width: 100%; }
+
+        .fx-dialog {
+            width: 100vw; height: 100vh; height: 100dvh;
+            max-width: none; max-height: 100dvh;
+            margin: 0; padding: 0; color: var(--text-main);
+            background: var(--bg-panel); border: none; border-radius: 0;
+        }
+        .track-manager-dialog {
+            width: min(540px, calc(100vw - 24px)); max-height: min(82dvh, 680px);
+            margin: auto; padding: 0; color: var(--text-main); background: var(--bg-panel);
+            border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.55);
+        }
+        .track-manager-dialog::backdrop { background: rgba(0,0,0,0.72); }
+        .track-manager-inner { display: flex; flex-direction: column; max-height: min(82dvh, 680px); }
+        .track-manager-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+        .track-manager-title { font-size: 0.9rem; font-weight: 800; }
+        .track-manager-list { display: flex; flex-direction: column; gap: 6px; overflow: auto; padding: 10px; }
+        .track-manager-row { display: grid; grid-template-columns: minmax(0, 1fr) 40px 40px 40px; align-items: center; gap: 6px; min-height: 48px; padding: 4px 6px 4px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 5px; }
+        .track-manager-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; font-weight: 700; }
+        .track-manager-index { margin-right: 7px; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.62rem; }
+        .track-manager-action { width: 40px; height: 40px; padding: 0; font-size: 1rem; }
+        .track-manager-action:disabled { opacity: 0.35; cursor: default; }
+        .track-manager-delete { color: #fff; background: #9e1730; border-color: #d32f4f; }
+        .track-manager-status { min-height: 22px; padding: 0 14px 8px; color: var(--text-muted); font-size: 0.68rem; }
+        .fx-dialog::backdrop { background: rgba(0,0,0,0.78); }
+        .fx-dialog-inner {
+            display: flex; flex-direction: column;
+            width: 100%; height: 100%;
+            max-height: 100dvh;
+        }
+        .fx-dialog-workspace { display: grid; grid-template-columns: 156px minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+        .routing-dialog-workspace { display: grid; grid-template-columns: 156px minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+        .routing-dialog-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+        .trackfx-dialog-workspace { display: grid; grid-template-columns: 156px minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+        .trackfx-dialog-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+        .fx-track-control-rail { display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 10px 8px; background: var(--bg-card); border-right: 1px solid var(--border); }
+        .fx-track-control-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: center; }
+        .fx-track-control-index { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.58rem; font-weight: 700; }
+        .fx-track-control-title { overflow: hidden; color: var(--text-main); font-size: 0.72rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .fx-track-control-rail .fader-touch-zone { flex: 1 1 auto; min-height: 180px; }
+        .fx-track-db { flex: 0 0 auto; }
+        .fx-track-pan-control { display: flex; flex-direction: column; gap: 3px; align-items: stretch; color: var(--text-muted); font-size: 0.58rem; font-weight: 800; text-align: center; }
+        .fx-track-pan-control input { width: 100%; min-width: 0; margin: 0; accent-color: var(--accent-blue); }
+        .fx-track-pan-value { color: var(--text-main); font-family: var(--font-mono); font-size: 0.58rem; }
+        .fx-track-action-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+        .fx-track-action-buttons .c-btn { min-width: 0; padding: 6px 0; }
+        .fx-track-action-buttons .rec { grid-column: span 2; }
+        .fx-track-action-buttons .c-btn:disabled, .fx-track-pan-control input:disabled { opacity: 0.45; }
+        .fx-dialog-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+        .fx-dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
+        .fx-dialog-title { font-size: 0.9rem; font-weight: 800; }
+        .fx-dialog-close { width: 32px; height: 32px; padding: 0; font-size: 1rem; }
+        .fx-selectors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 12px; }
+        .fx-selectors label { display: flex; flex-direction: column; gap: 4px; color: var(--text-muted); font-size: 0.62rem; font-weight: 700; }
+        .fx-selectors select { min-width: 0; height: 34px; padding: 0 8px; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; }
+        .fx-status { min-height: 24px; padding: 0 12px 8px; color: var(--text-muted); font-size: 0.68rem; }
+        .fx-parameters {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+            padding: 0 12px 12px;
+        }
+        .fx-parameter { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(100px, 2fr) 54px; align-items: center; gap: 10px; min-height: 42px; border-top: 1px solid var(--border); }
+        .fx-parameter-name { overflow: hidden; color: var(--text-main); font-size: 0.68rem; text-overflow: ellipsis; white-space: nowrap; }
+        .fx-parameter input { width: 100%; accent-color: var(--accent-blue); }
+        .fx-parameter-value { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.6rem; text-align: right; }
+        .fx-dialog-transport {
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); background: var(--bg-panel);
+        }
+        @media (max-width: 1024px) {
+            .transport-layout { gap: 10px; }
+            .transport-side-left { gap: 6px; }
+            .transport-layout .t-btn { width: 44px; height: 40px; border-radius: 7px; }
+            .transport-symbol { display: none; }
+        }
+        @media (max-width: 420px) {
+            .transport-layout { gap: 6px; }
+            .transport-side-left { gap: 4px; }
+            .transport-layout .t-btn { width: 36px; height: 36px; }
+            .fx-parameter { grid-template-columns: minmax(80px, 1fr) minmax(70px, 1.4fr) 48px; gap: 6px; }
+            .fx-selectors { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .fx-dialog-workspace { grid-template-columns: 104px minmax(0, 1fr); }
+            .routing-dialog-workspace { grid-template-columns: 104px minmax(0, 1fr); }
+            .trackfx-dialog-workspace { grid-template-columns: 104px minmax(0, 1fr); }
+            .fx-track-control-rail { gap: 6px; padding: 8px 5px; }
+            .fx-track-control-rail .fader-touch-zone { min-height: 150px; }
+            .fx-track-action-buttons .c-btn { font-size: 0.62rem; }
+        }
+
+        .routing-trackbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; padding: 10px 12px; }
+        .routing-trackbar label, .routing-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--text-muted); font-size: 0.68rem; font-weight: 700; }
+        .routing-trackbar select, .routing-field select { min-width: 0; height: 36px; padding: 0 9px; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; }
+        .routing-status { color: var(--text-muted); font-size: 0.66rem; text-align: right; }
+        .routing-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 0 12px 9px; border-bottom: 1px solid var(--border); }
+        .routing-tab { min-height: 38px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; font-size: 0.72rem; font-weight: 700; touch-action: manipulation; }
+        .routing-tab[aria-selected="true"] { color: var(--text-main); background: var(--bg-card-alt); border-color: var(--accent-blue); }
+        .routing-panel { display: flex; flex: 1 1 auto; flex-direction: column; gap: 16px; min-height: 0; overflow: auto; padding: 12px; }
+        .routing-panel[hidden] { display: none; }
+        .routing-io-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: 12px; }
+        .routing-toggle { display: flex; align-items: center; gap: 9px; min-height: 36px; color: var(--text-main); font-size: 0.75rem; font-weight: 700; }
+        .routing-toggle input { width: 20px; height: 20px; accent-color: var(--accent-blue); }
+        .routing-section { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 12px; }
+        .routing-section-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .routing-section-header h3 { font-size: 0.76rem; font-weight: 800; }
+        .routing-add-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+        .routing-add-row .tool-btn { min-height: 36px; }
+        .routing-list { display: flex; flex-direction: column; }
+        .routing-row { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding: 10px 0; }
+        .routing-row-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 32px; }
+        .routing-row-title { min-width: 0; overflow: hidden; color: var(--text-main); font-size: 0.72rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .routing-row-actions { display: flex; align-items: center; gap: 6px; }
+        .routing-remove { width: 32px; height: 32px; padding: 0; font-size: 1rem; }
+        .routing-send-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+        .routing-value { color: var(--text-main); font-family: var(--font-mono); font-size: 0.65rem; text-align: right; }
+        .routing-range { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .routing-range input { width: 100%; min-width: 40px; accent-color: var(--accent-blue); }
+        .routing-empty { padding: 12px 0; color: var(--text-muted); font-size: 0.7rem; }
+        .trackfx-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; padding: 10px 12px; }
+        .trackfx-toolbar label { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--text-muted); font-size: 0.68rem; font-weight: 700; }
+        .trackfx-toolbar input, .trackfx-toolbar select { min-width: 0; height: 36px; padding: 0 9px; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; }
+        .trackfx-toolbar .tool-btn { min-height: 36px; }
+        .trackfx-status { min-height: 24px; padding: 0 12px 8px; color: var(--text-muted); font-size: 0.68rem; }
+        .trackfx-list { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 12px 12px; }
+        .trackfx-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-height: 52px; border-top: 1px solid var(--border); }
+        .trackfx-name { min-width: 0; overflow: hidden; padding: 6px 0; color: var(--text-main); background: transparent; border: 0; font: inherit; font-size: 0.74rem; font-weight: 700; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+        .trackfx-name:hover { color: var(--accent-blue); }
+        .trackfx-toggle { min-width: 76px; min-height: 34px; padding: 0 9px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; font-size: 0.67rem; font-weight: 700; touch-action: manipulation; }
+        .trackfx-toggle[aria-pressed="true"] { color: var(--accent-green); border-color: var(--accent-green); }
+        .trackfx-delete { width: 34px; height: 34px; padding: 0; font-size: 1rem; }
+        @media (max-width: 640px) {
+            .routing-trackbar { grid-template-columns: 1fr; align-items: stretch; }
+            .routing-status { text-align: left; }
+            .routing-io-grid { grid-template-columns: 1fr; }
+            .routing-send-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .trackfx-row { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+            .trackfx-toggle { min-width: 64px; padding: 0 6px; }
+            .trackfx-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+            .trackfx-toolbar label:first-child { grid-column: 1 / -1; }
+        }
+
+        .transport-bar {
+            min-height: 86px;
+            background: var(--bg-panel); border-top: 1px solid var(--border);
+            display: flex; flex-direction: column; justify-content: center; gap: 8px;
+            padding: 8px 12px 10px;
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+        }
+        .transport-layout {
+            display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center; gap: 12px; width: min(100%, 1100px); margin: 0 auto;
+        }
+        .transport-side-left { display: flex; align-items: center; gap: 8px; }
+        .transport-progress-wrap {
+            display: flex; flex-direction: column; gap: 5px; width: min(100%, 900px); min-width: 0; margin: 0 auto;
+        }
+        .transport-progress-meta {
+            display: flex; justify-content: space-between; align-items: center;
+            color: var(--text-muted); font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        .transport-progress {
+            position: relative; overflow: hidden; width: 100%; height: 8px; border-radius: 999px;
+            background: rgba(255,255,255,0.08); border: 1px solid var(--border);
+            cursor: pointer; touch-action: none; outline: none;
+        }
+        .transport-progress:focus-visible { box-shadow: 0 0 0 2px var(--bg-panel), 0 0 0 4px var(--accent-blue); }
+        .transport-progress-fill {
+            position: absolute; inset: 0 auto 0 0; width: 0%; border-radius: inherit;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+            box-shadow: 0 0 12px rgba(41, 182, 246, 0.6);
+        }
+        .t-btn {
+            width: 46px; height: 36px; background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-main); border-radius: 6px; font-size: 0.95rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            touch-action: manipulation;
+        }
+        .transport-icon { display: none; width: 19px; height: 19px; flex: 0 0 auto; fill: currentColor; }
+        .transport-icon-pause { display: none; }
+        .t-btn.play.active .transport-icon-play { display: none; }
+        .t-btn.play.active .transport-icon-pause { display: block; }
+        .t-btn.play.active .transport-symbol { display: none; }
+        .t-btn:active { background: var(--border); }
+        .t-btn.play.active { background: var(--accent-green); color: #000; }
+        .t-btn.rec.active { background: var(--accent-red); color: #fff; }
+        .t-btn.metronome-btn.active { background: var(--accent-orange); color: #000; border-color: var(--accent-orange); }
+        .t-btn.metronome-btn.active { background: var(--accent-orange); color: #000; border-color: var(--accent-orange); }
+        @media (max-width: 1024px) {
+            .transport-icon { display: block; }
+            .transport-icon-pause { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="console-header">
+        <div class="brand-area">
+            <span>REAPER</span>
+            <span class="connection-pill" id="connStatus">CONECTANDO...</span>
+            <button class="tool-btn header-manage-tracks" type="button" aria-label="Manage tracks" title="Manage tracks" onclick="openTrackManager()">Tracks</button>
+        </div>
+        <div class="header-tools">
+            <button class="tool-btn" type="button" onclick="openFxManager()">FX Params</button>
+            <button class="tool-btn" type="button" onclick="openRoutingManager('sends')">Routing</button>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <div class="master-strip">
+            <div class="timecode-box" id="timecodeDisplay">00:00:00</div>
+            <div class="strip-label">MASTER</div>
+            <div class="fader-touch-zone" id="masterFaderZone">
+                <div class="fader-slot-line"></div>
+                <div class="vu-meter-bar"><div class="vu-meter-fill" id="masterMeter"></div></div>
+                <div class="fader-cap" id="masterFaderCap"><div class="fader-cap-notch"></div></div>
+            </div>
+            <div class="db-readout" id="masterDb">0.0 dB</div>
+            <button class="c-btn fx master-fx-btn" type="button" aria-label="Abrir efectos del master" onclick="openTrackFxManager(0)">FX</button>
+        </div>
+
+        <div class="channels-container" id="channelsContainer"></div>
+    </div>
+
+    <footer class="transport-bar">
+        <div class="transport-layout">
+            <div class="transport-side-left">
+                <button class="t-btn rec" type="button" id="recBtn" aria-label="Grabar" title="Grabar" onclick="sendAction('1013')"><span class="transport-symbol" aria-hidden="true">⏺</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
+                <button class="t-btn" type="button" aria-label="Ir al inicio de la canción" title="Ir al inicio de la canción" onclick="sendAction('40042')"><span class="transport-symbol" aria-hidden="true">|◀</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5h2v14H5zM19 6v12l-10-6z"/></svg></button>
+                <button class="t-btn play" type="button" id="playBtn" aria-label="Reproducir" title="Reproducir" aria-pressed="false" onclick="togglePlayback()"><span class="transport-symbol" aria-hidden="true">▶</span><svg class="transport-icon transport-icon-play" aria-hidden="true" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg><svg class="transport-icon transport-icon-pause" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 4h5v16H6zM14 4h5v16h-5z"/></svg></button>
+            </div>
+            <div class="transport-progress-wrap">
+                <div class="transport-progress-meta">
+                    <span id="transportCurrentTime">00:00:00</span>
+                    <span id="transportTotalTime">00:00:00</span>
+                </div>
+                <div class="transport-progress" id="transportProgress" role="slider" tabindex="0" aria-label="Posición de reproducción" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <div class="transport-progress-fill" id="transportProgressFill"></div>
+                </div>
+            </div>
+            <button class="t-btn" type="button" aria-label="Activar o desactivar metrónomo" title="Activar o desactivar metrónomo" onclick="sendAction('40364')"><span class="transport-symbol" aria-hidden="true">⏱</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 2h6v2H9zM12 6a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 14a6 6 0 1 1 6-6 6 6 0 0 1-6 6zm1-10h-2v4.4l3.2 1.9 1-1.7-2.2-1.3zM18.5 5.1l1.4 1.4 1.2-1.2-1.4-1.4z"/></svg></button>
+        </div>
+    </footer>
+
+    <dialog class="track-manager-dialog" id="trackManagerDialog" aria-labelledby="trackManagerTitle">
+        <div class="track-manager-inner">
+            <div class="track-manager-header">
+                <h2 class="track-manager-title" id="trackManagerTitle">Tracks</h2>
+                <div class="header-tools">
+                    <button class="tool-btn header-create-track" type="button" aria-label="Create new track" title="Create new track" onclick="createNewTrack()">+ Track</button>
+                    <button class="tool-btn fx-dialog-close" type="button" aria-label="Close track manager" onclick="closeTrackManager()">×</button>
+                </div>
+            </div>
+            <div class="track-manager-list" id="trackManagerList"></div>
+            <div class="track-manager-status" id="trackManagerStatus" role="status" aria-live="polite"></div>
+        </div>
+    </dialog>
+
+    <dialog class="fx-dialog" id="fxDialog" aria-labelledby="fxDialogTitle">
+        <div class="fx-dialog-inner">
+            <div class="fx-dialog-header">
+                <h2 class="fx-dialog-title" id="fxDialogTitle">FX Parameters</h2>
+                <button class="tool-btn fx-dialog-close" type="button" aria-label="Cerrar" onclick="closeFxManager()">×</button>
+            </div>
+            <div class="fx-selectors">
+                <label>Track<select id="fxTrackSelect" onchange="onFxTrackChange()"></select></label>
+                <label>Effect<select id="fxSelect" onchange="requestFxParameters()"></select></label>
+            </div>
+            <div class="fx-dialog-workspace">
+                <aside class="fx-track-control-rail" id="fxTrackRail" data-track-selector="fxTrackSelect" aria-label="Controles de la pista seleccionada">
+                    <div class="fx-track-control-name">
+                        <span class="fx-track-control-index" id="fxTrackControlIndex">TR 1</span>
+                        <strong class="fx-track-control-title" id="fxTrackControlTitle">Track</strong>
+                    </div>
+                        <div class="fader-touch-zone fx-track-fader-zone" id="fxTrackFaderZone" role="slider" tabindex="0" aria-label="Volumen de la pista seleccionada" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1" aria-valuetext="0.0 dB">
+                        <div class="fader-slot-line"></div>
+                            <div class="vu-meter-bar"><div class="vu-meter-fill fx-track-meter" id="fxTrackMeter"></div></div>
+                            <div class="fader-cap fx-track-fader-cap" id="fxTrackFaderCap"><div class="fader-cap-notch"></div></div>
+                    </div>
+                    <div class="db-readout fx-track-db" id="fxTrackDb">0.0 dB</div>
+                    <label class="fx-track-pan-control">PAN<input class="fx-track-pan" id="fxTrackPan" type="range" min="-1" max="1" step="0.01" value="0"><span class="fx-track-pan-value" id="fxTrackPanValue">C</span></label>
+                    <div class="fx-track-action-buttons">
+                        <button class="c-btn mute" id="fxTrackMuteBtn" data-track-state="MUTE" type="button" aria-label="Silenciar pista" aria-pressed="false">M</button>
+                        <button class="c-btn solo" id="fxTrackSoloBtn" data-track-state="SOLO" type="button" aria-label="Solo de pista" aria-pressed="false">S</button>
+                        <button class="c-btn rec" id="fxTrackArmBtn" data-track-state="RECARM" type="button" aria-label="Armar pista" aria-pressed="false">ARM</button>
+                    </div>
+                </aside>
+                <div class="fx-dialog-main">
+                    <div class="fx-status" id="fxStatus" role="status">Cargando bridge de REAPER...</div>
+                    <div class="fx-parameters" id="fxParameters"></div>
+                </div>
+            </div>
+            <div class="fx-dialog-transport">
+                <div class="transport-layout">
+                    <div class="transport-side-left">
+                        <button class="t-btn rec" type="button" id="recBtnFx" aria-label="Grabar" title="Grabar" onclick="sendAction('1013')"><span class="transport-symbol" aria-hidden="true">⏺</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
+                        <button class="t-btn play" type="button" id="playBtnFx" aria-label="Reproducir" title="Reproducir" aria-pressed="false" onclick="togglePlayback()"><span class="transport-symbol" aria-hidden="true">▶</span><svg class="transport-icon transport-icon-play" aria-hidden="true" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg><svg class="transport-icon transport-icon-pause" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 4h5v16H6zM14 4h5v16h-5z"/></svg></button>
+                    </div>
+                    <div class="transport-progress-wrap">
+                        <div class="transport-progress-meta">
+                            <span id="fxTransportCurrentTime">00:00:00</span>
+                            <span id="fxTransportTotalTime">00:00:00</span>
+                        </div>
+                        <div class="transport-progress" id="fxTransportProgress" role="slider" tabindex="0" aria-label="Posición de reproducción en FX" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <div class="transport-progress-fill" id="fxTransportProgressFill"></div>
+                        </div>
+                    </div>
+                    <button class="t-btn" type="button" aria-label="Activar o desactivar metrónomo" title="Activar o desactivar metrónomo" onclick="sendAction('40364')"><span class="transport-symbol" aria-hidden="true">⏱</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 2h6v2H9zM12 6a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 14a6 6 0 1 1 6-6 6 6 0 0 1-6 6zm1-10h-2v4.4l3.2 1.9 1-1.7-2.2-1.3zM18.5 5.1l1.4 1.4 1.2-1.2-1.4-1.4z"/></svg></button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog class="fx-dialog" id="trackFxDialog" aria-labelledby="trackFxTitle">
+        <div class="fx-dialog-inner">
+            <div class="fx-dialog-header">
+                <h2 class="fx-dialog-title" id="trackFxTitle">Track FX</h2>
+                <button class="tool-btn fx-dialog-close" type="button" aria-label="Close" onclick="closeTrackFxManager()">×</button>
+            </div>
+            <div class="trackfx-dialog-workspace">
+                <aside class="fx-track-control-rail" id="trackFxControlRail" data-track-index="0" aria-label="Controls for selected track">
+                    <div class="fx-track-control-name">
+                        <span class="fx-track-control-index" id="trackFxControlIndex">TR 1</span>
+                        <strong class="fx-track-control-title" id="trackFxControlTitle">Track</strong>
+                    </div>
+                    <div class="fader-touch-zone fx-track-fader-zone" id="trackFxFaderZone" role="slider" tabindex="0" aria-label="Selected track volume" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1" aria-valuetext="0.0 dB">
+                        <div class="fader-slot-line"></div>
+                        <div class="vu-meter-bar"><div class="vu-meter-fill fx-track-meter" id="trackFxMeter"></div></div>
+                        <div class="fader-cap fx-track-fader-cap" id="trackFxFaderCap"><div class="fader-cap-notch"></div></div>
+                    </div>
+                    <div class="db-readout fx-track-db" id="trackFxDb">0.0 dB</div>
+                    <label class="fx-track-pan-control">PAN<input class="fx-track-pan" id="trackFxPan" type="range" min="-1" max="1" step="0.01" value="0"><span class="fx-track-pan-value" id="trackFxPanValue">C</span></label>
+                    <div class="fx-track-action-buttons">
+                        <button class="c-btn mute" id="trackFxMuteBtn" data-track-state="MUTE" type="button" aria-label="Mute selected track" aria-pressed="false">M</button>
+                        <button class="c-btn solo" id="trackFxSoloBtn" data-track-state="SOLO" type="button" aria-label="Solo selected track" aria-pressed="false">S</button>
+                        <button class="c-btn rec" id="trackFxArmBtn" data-track-state="RECARM" type="button" aria-label="Arm selected track" aria-pressed="false">ARM</button>
+                    </div>
+                </aside>
+                <div class="trackfx-dialog-main">
+                    <div class="trackfx-toolbar">
+                        <label>Search installed effects<input id="trackFxSearch" type="search" autocomplete="off" placeholder="Type an effect name" oninput="scheduleInstalledFxSearch()"></label>
+                        <label class="trackfx-plugin-picker">Matching effects<select id="trackFxPluginSelect" onchange="document.getElementById('addTrackFxButton').disabled = this.value === ''"></select></label>
+                        <button class="tool-btn" id="addTrackFxButton" type="button" onclick="addTrackFx()" disabled>Add effect</button>
+                    </div>
+                    <div class="trackfx-status" id="trackFxStatus" role="status">Loading track effects...</div>
+                    <div class="trackfx-list" id="trackFxList"></div>
+                </div>
+            </div>
+            <div class="fx-dialog-transport">
+                <div class="transport-layout">
+                    <div class="transport-side-left">
+                        <button class="t-btn rec" type="button" id="recBtnTrackFx" aria-label="Record" title="Record" onclick="sendAction('1013')"><span class="transport-symbol" aria-hidden="true">⏺</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
+                        <button class="t-btn play" type="button" id="playBtnTrackFx" aria-label="Play" title="Play" aria-pressed="false" onclick="togglePlayback()"><span class="transport-symbol" aria-hidden="true">▶</span><svg class="transport-icon transport-icon-play" aria-hidden="true" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg><svg class="transport-icon transport-icon-pause" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 4h5v16H6zM14 4h5v16h-5z"/></svg></button>
+                    </div>
+                    <div class="transport-progress-wrap">
+                        <div class="transport-progress-meta">
+                            <span id="trackFxTransportCurrentTime">00:00:00</span>
+                            <span id="trackFxTransportTotalTime">00:00:00</span>
+                        </div>
+                        <div class="transport-progress" id="trackFxTransportProgress" role="slider" tabindex="0" aria-label="Playback position in Track FX" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <div class="transport-progress-fill" id="trackFxTransportProgressFill"></div>
+                        </div>
+                    </div>
+                    <button class="t-btn" type="button" aria-label="Toggle metronome" title="Toggle metronome" onclick="sendAction('40364')"><span class="transport-symbol" aria-hidden="true">⏱</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 2h6v2H9zM12 6a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 14a6 6 0 1 1 6-6 6 6 0 0 1-6-6zm1-10h-2v4.4l3.2 1.9 1-1.7-2.2-1.3zM18.5 5.1l1.4 1.4 1.2-1.2-1.4-1.4z"/></svg></button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog class="fx-dialog" id="routingDialog" aria-labelledby="routingDialogTitle">
+        <div class="fx-dialog-inner">
+            <div class="fx-dialog-header">
+                <h2 class="fx-dialog-title" id="routingDialogTitle">Routing</h2>
+                <button class="tool-btn fx-dialog-close" type="button" aria-label="Close" onclick="closeRoutingManager()">×</button>
+            </div>
+            <div class="routing-dialog-workspace">
+                <aside class="fx-track-control-rail" id="routingTrackRail" data-track-selector="routingTrackSelect" aria-label="Controls for selected track">
+                    <div class="fx-track-control-name">
+                        <span class="fx-track-control-index" id="routingTrackControlIndex">TR 1</span>
+                        <strong class="fx-track-control-title" id="routingTrackControlTitle">Track</strong>
+                    </div>
+                    <div class="fader-touch-zone fx-track-fader-zone" id="routingTrackFaderZone" role="slider" tabindex="0" aria-label="Selected track volume" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1" aria-valuetext="0.0 dB">
+                        <div class="fader-slot-line"></div>
+                        <div class="vu-meter-bar"><div class="vu-meter-fill fx-track-meter" id="routingTrackMeter"></div></div>
+                        <div class="fader-cap fx-track-fader-cap" id="routingTrackFaderCap"><div class="fader-cap-notch"></div></div>
+                    </div>
+                    <div class="db-readout fx-track-db" id="routingTrackDb">0.0 dB</div>
+                    <label class="fx-track-pan-control">PAN<input class="fx-track-pan" id="routingTrackPan" type="range" min="-1" max="1" step="0.01" value="0"><span class="fx-track-pan-value" id="routingTrackPanValue">C</span></label>
+                    <div class="fx-track-action-buttons">
+                        <button class="c-btn mute" id="routingTrackMuteBtn" data-track-state="MUTE" type="button" aria-label="Mute selected track" aria-pressed="false">M</button>
+                        <button class="c-btn solo" id="routingTrackSoloBtn" data-track-state="SOLO" type="button" aria-label="Solo selected track" aria-pressed="false">S</button>
+                        <button class="c-btn rec" id="routingTrackArmBtn" data-track-state="RECARM" type="button" aria-label="Arm selected track" aria-pressed="false">ARM</button>
+                    </div>
+                </aside>
+                <div class="routing-dialog-main">
+                    <div class="routing-trackbar">
+                        <label>Track<select id="routingTrackSelect" onchange="onRoutingTrackChange()"></select></label>
+                        <div class="routing-status" id="routingStatus" role="status">Select a track.</div>
+                    </div>
+                    <div class="routing-tabs" role="tablist" aria-label="Routing panels">
+                        <button class="routing-tab" id="routingSendsTab" type="button" role="tab" aria-selected="true" aria-controls="routingSendsPanel" onclick="setRoutingPanel('sends')">Sends / Receives</button>
+                        <button class="routing-tab" id="routingIOTab" type="button" role="tab" aria-selected="false" aria-controls="routingIOPanel" onclick="setRoutingPanel('io')">Inputs / Outputs</button>
+                    </div>
+                    <section class="routing-panel" id="routingIOPanel" role="tabpanel" aria-labelledby="routingIOTab">
+                        <div class="routing-io-grid">
+                            <label class="routing-field">Record input<select id="routeInputSelect" onchange="setRoutingTrackValue('SETINPUT', this.value)"></select></label>
+                            <label class="routing-field">MIDI hardware output<select id="routeMidiOutputSelect" onchange="setRoutingTrackValue('SETMIDIOUT', this.value)"></select></label>
+                            <label class="routing-toggle"><input id="routeMainSend" type="checkbox" onchange="setRoutingTrackValue('SETMAIN', this.checked ? 1 : 0)">Send to master / parent</label>
+                        </div>
+                        <section class="routing-section">
+                            <div class="routing-section-header"><h3>Hardware outputs</h3></div>
+                            <div class="routing-add-row">
+                                <label class="routing-field">Add output<select id="hardwareOutputSelect"></select></label>
+                                <button class="tool-btn" type="button" onclick="addHardwareOutput()">Add</button>
+                            </div>
+                            <div class="routing-list" id="hardwareOutputList"></div>
+                        </section>
+                    </section>
+                    <section class="routing-panel" id="routingSendsPanel" role="tabpanel" aria-labelledby="routingSendsTab">
+                        <div class="routing-io-grid">
+                            <label class="routing-field">Track channels<select id="routingChannelCount" onchange="setRoutingTrackValue('SETNCHAN', this.value)"><option value="2">2 channels</option><option value="4">4 channels</option><option value="6">6 channels</option><option value="8">8 channels</option><option value="16">16 channels</option><option value="32">32 channels</option></select></label>
+                            <div></div>
+                        </div>
+                        <section class="routing-section">
+                            <div class="routing-section-header"><h3>New send</h3></div>
+                            <div class="routing-add-row">
+                                <label class="routing-field">Destination<select id="routingSendTarget"></select></label>
+                                <button class="tool-btn" type="button" onclick="addTrackSend()">Add send</button>
+                            </div>
+                        </section>
+                        <section class="routing-section">
+                            <div class="routing-section-header"><h3>Track sends</h3></div>
+                            <div class="routing-list" id="routingSendList"></div>
+                        </section>
+                        <section class="routing-section">
+                            <div class="routing-section-header"><h3>Track receives</h3></div>
+                            <div class="routing-list" id="routingReceiveList"></div>
+                        </section>
+                    </section>
+                </div>
+            </div>
+            <div class="fx-dialog-transport">
+                <div class="transport-layout">
+                    <div class="transport-side-left">
+                        <button class="t-btn rec" type="button" id="recBtnRouting" aria-label="Record" title="Record" onclick="sendAction('1013')"><span class="transport-symbol" aria-hidden="true">⏺</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></button>
+                        <button class="t-btn play" type="button" id="playBtnRouting" aria-label="Play" title="Play" aria-pressed="false" onclick="togglePlayback()"><span class="transport-symbol" aria-hidden="true">▶</span><svg class="transport-icon transport-icon-play" aria-hidden="true" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg><svg class="transport-icon transport-icon-pause" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 4h5v16H6zM14 4h5v16h-5z"/></svg></button>
+                    </div>
+                    <div class="transport-progress-wrap">
+                        <div class="transport-progress-meta">
+                            <span id="routingTransportCurrentTime">00:00:00</span>
+                            <span id="routingTransportTotalTime">00:00:00</span>
+                        </div>
+                        <div class="transport-progress" id="routingTransportProgress" role="slider" tabindex="0" aria-label="Playback position in Routing" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <div class="transport-progress-fill" id="routingTransportProgressFill"></div>
+                        </div>
+                    </div>
+                    <button class="t-btn" type="button" aria-label="Toggle metronome" title="Toggle metronome" onclick="sendAction('40364')"><span class="transport-symbol" aria-hidden="true">⏱</span><svg class="transport-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 2h6v2H9zM12 6a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 14a6 6 0 1 1 6-6 6 6 0 0 1-6 6zm1-10h-2v4.4l3.2 1.9 1-1.7-2.2-1.3zM18.5 5.1l1.4 1.4 1.2-1.2-1.4-1.4z"/></svg></button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        let tracksData = [];
+        let editingTrackNameIndex = null;
+        let pendingTrackRename = null;
+        let trackManagerPendingRequestId = null;
+        let trackManagerRenderedSignature = null;
+        let metronomeEnabled = false;
+        let phaseTracks = new Set();
+        let masterVolVal = 1.0;
+        let transportDurationSeconds = 0;
+        let lastSeekSentAt = 0;
+        let fxRequestId = 0;
+        let fxPendingRequestId = null;
+        let progressRequestId = null;
+        let progressRequestTimer = null;
+        let fxRequestTimer = null;
+        let lastFxResponse = "";
+        let fxPendingSelection = null;
+        let trackFxRequestId = 0;
+        let trackFxRequestTimer = null;
+        let trackFxSearchTimer = null;
+        let trackFxTrackIndex = 0;
+        let trackFxInitialSearchPending = false;
+        let trackFxPendingSelectionIndex = null;
+        let trackFxPendingMutation = null;
+        let fxTrackListSignature = "";
+        let routingTrackListSignature = "";
+        let routingPanel = "io";
+        let routingTrackChannels = new Map();
+        let routingRequestId = 0;
+        let routingRequestTimer = null;
+
+        const MAX_VOL = 3.9811; // +12 dB
+        const FADER_UNITY_POS = 0.716;
+        const FADER_CURVE = Math.log(MAX_VOL) / Math.log(1 / FADER_UNITY_POS);
+        function faderPosToVol(pos) {
+            return pos <= 0 ? 0 : Math.min(MAX_VOL, Math.pow(pos / FADER_UNITY_POS, FADER_CURVE));
+        }
+        function volToFaderPos(vol) {
+            return vol <= 0 ? 0 : Math.min(1, FADER_UNITY_POS * Math.pow(vol, 1 / FADER_CURVE));
+        }
+        function volToDb(vol) {
+            if (!Number.isFinite(vol) || vol <= 0.0000001) return "-inf";
+            let db = 20 * Math.log10(vol);
+            return db.toFixed(1);
+        }
+        function volToMeterPct(peakVal10) {
+            if (!Number.isFinite(peakVal10)) return 0;
+            let db = peakVal10 / 10.0;
+            if (db < -60) return 0;
+            if (db > 6) return 100;
+            return Math.min(100, Math.max(0, ((db + 60) / 66) * 100));
+        }
+
+        function parsePeak(value) {
+            let peak = Number.parseInt(value, 10);
+            return Number.isFinite(peak) ? peak : -1500;
+        }
+
+        function clampPan(pan) {
+            return Math.max(-1, Math.min(1, Number.isFinite(pan) ? pan : 0));
+        }
+
+        function formatPan(pan) {
+            if (Math.abs(pan) < 0.01) return "C";
+            return `${pan < 0 ? "L" : "R"} ${Math.round(Math.abs(pan) * 100)}`;
+        }
+
+        function updatePanUi(trackIdx, pan, force = false) {
+            let knob = document.getElementById(`pan-knob-${trackIdx}`);
+            let readout = document.getElementById(`pan-readout-${trackIdx}`);
+            if (!knob || (!force && knob.dataset.dragging === "true")) return;
+
+            pan = clampPan(pan);
+            knob.style.setProperty("--pan-angle", `${pan * 135}deg`);
+            knob.setAttribute("aria-valuenow", pan.toFixed(2));
+            knob.setAttribute("aria-valuetext", formatPan(pan));
+            if (readout) readout.textContent = formatPan(pan);
+        }
+
+        function attachPanKnob(element, trackIdx, initialPan) {
+            let currentPan = clampPan(initialPan);
+            let startY = 0;
+            let startPan = currentPan;
+            let lastTapAt = 0;
+            let moved = false;
+
+            function setPan(pan) {
+                currentPan = clampPan(pan);
+                updatePanUi(trackIdx, currentPan, true);
+                if (typeof wwr_req === "function") {
+                    wwr_req(`SET/TRACK/${trackIdx}/PAN/${currentPan.toFixed(4)}`);
+                }
+            }
+
+            element.addEventListener("pointerdown", (event) => {
+                event.preventDefault();
+                startY = event.clientY;
+                startPan = currentPan;
+                moved = false;
+                element.dataset.dragging = "true";
+                element.setPointerCapture(event.pointerId);
+            });
+            element.addEventListener("pointermove", (event) => {
+                if (element.dataset.dragging === "true") {
+                    if (Math.abs(event.clientY - startY) > 5) moved = true;
+                    setPan(startPan - (event.clientY - startY) / 90);
+                }
+            });
+            element.addEventListener("pointerup", () => {
+                delete element.dataset.dragging;
+                if (moved) {
+                    lastTapAt = 0;
+                    return;
+                }
+
+                let now = performance.now();
+                if (now - lastTapAt < 350) {
+                    lastTapAt = 0;
+                    setPan(0);
+                } else {
+                    lastTapAt = now;
+                }
+            });
+            element.addEventListener("pointercancel", () => { delete element.dataset.dragging; });
+            element.addEventListener("keydown", (event) => {
+                let step = event.shiftKey ? 0.01 : 0.05;
+                if (event.key === "ArrowLeft" || event.key === "ArrowDown") setPan(currentPan - step);
+                else if (event.key === "ArrowRight" || event.key === "ArrowUp") setPan(currentPan + step);
+                else if (event.key === "Home") setPan(-1);
+                else if (event.key === "End") setPan(1);
+                else return;
+                event.preventDefault();
+            });
+        }
+
+        function sendAction(cmdID) {
+            if (typeof wwr_req === 'function') {
+                wwr_req(cmdID);
+            }
+        }
+
+        function createNewTrack() {
+            sendAction("40001");
+        }
+
+        function setPlaybackState(isPlaying) {
+            [document.getElementById('playBtn'), document.getElementById('playBtnFx'), document.getElementById('playBtnRouting'), document.getElementById('playBtnTrackFx')].forEach(button => {
+                if (!button) return;
+                button.classList.toggle('active', isPlaying);
+                button.setAttribute('aria-pressed', String(isPlaying));
+                const isEnglishButton = button.id === 'playBtnRouting' || button.id === 'playBtnTrackFx';
+                const label = isEnglishButton
+                    ? (isPlaying ? 'Pause' : 'Play')
+                    : (isPlaying ? 'Pausar' : 'Reproducir');
+                button.setAttribute('aria-label', label);
+                button.title = label;
+                const symbol = button.querySelector('.transport-symbol');
+                if (symbol) symbol.textContent = isPlaying ? '⏸' : '▶';
+            });
+        }
+
+        function togglePlayback() {
+            const isPlaying = document.getElementById('playBtn').classList.contains('active');
+            setPlaybackState(!isPlaying);
+            sendAction(isPlaying ? '1008' : '1007');
+        }
+
+        function setMetronomeState(isEnabled) {
+            metronomeEnabled = isEnabled;
+            document.querySelectorAll(".metronome-btn").forEach(button => {
+                button.classList.toggle("active", isEnabled);
+                button.setAttribute("aria-pressed", String(isEnabled));
+            });
+        }
+
+        function togglePhase(trackIdx) {
+            if (typeof wwr_req !== "function") return;
+            if (phaseTracks.has(trackIdx)) phaseTracks.delete(trackIdx); else phaseTracks.add(trackIdx);
+            document.getElementById(`btn-phase-${trackIdx}`)?.classList.toggle("active", phaseTracks.has(trackIdx));
+            wwr_req(`SET/EXTSTATE/REAPER_FX_UI/request/TOGGLEPHASE|${++fxRequestId}|${trackIdx}`);
+        }
+
+        function toggleMetronome() {
+            setMetronomeState(!metronomeEnabled);
+            sendAction("40364");
+        }
+
+        function toggleTrackFx(trackIdx) {
+            if (typeof wwr_req === "function") {
+                wwr_req(`SET/TRACK/${trackIdx}/FX/-1`);
+            }
+        }
+
+        function sendFxBridgeRequest(command, ...arguments_) {
+            if (typeof wwr_req !== "function") {
+                document.getElementById("fxStatus").textContent = "Web Control de REAPER no está conectado.";
+                return null;
+            }
+            const requestId = ++fxRequestId;
+            fxPendingRequestId = requestId;
+            let request = [command, requestId, ...arguments_].join("|");
+            wwr_req(`SET/EXTSTATE/REAPER_FX_UI/request/${request}`);
+            if (fxRequestTimer) clearTimeout(fxRequestTimer);
+            fxRequestTimer = setTimeout(() => {
+                if (fxPendingRequestId !== requestId) return;
+                fxPendingRequestId = null;
+                if (pendingTrackRename?.requestId === requestId) {
+                    const track = tracksData.find(item => item.idx === pendingTrackRename.trackIdx);
+                    if (track) track.name = pendingTrackRename.oldName;
+                    pendingTrackRename = null;
+                    renderTracks();
+                }
+                if (trackManagerPendingRequestId === requestId) {
+                    trackManagerPendingRequestId = null;
+                    if (document.getElementById("trackManagerDialog").open) {
+                        document.getElementById("trackManagerStatus").textContent = "Sin respuesta. Ejecuta FX_Control_Bridge.lua desde Actions de REAPER.";
+                        renderTrackManagerList(true);
+                    }
+                }
+                document.getElementById("fxStatus").textContent = "Sin respuesta. Comprueba que FX_Control_Bridge.lua esté ejecutándose en REAPER.";
+            }, 2500);
+            return requestId;
+        }
+
+        function openFxManager(trackIndex = null, fxIndex = null) {
+            const dialog = document.getElementById("fxDialog");
+            if (!dialog.open) dialog.showModal();
+            populateFxTracks(true);
+            populateRoutingTracks();
+            const trackSelect = document.getElementById("fxTrackSelect");
+            if (trackIndex !== null && [...trackSelect.options].some(option => option.value === String(trackIndex))) {
+                trackSelect.value = String(trackIndex);
+            }
+            trackFxTrackIndex = Number(trackSelect.value) || 0;
+            syncTrackSelector("routingTrackSelect", trackSelect.value);
+            updateTrackManagerControls();
+            updateRoutingTrackControls();
+            updateFxTrackControls();
+            requestFxList(fxIndex);
+        }
+
+        function closeFxManager() {
+            document.getElementById("fxDialog").close();
+        }
+
+        function onFxTrackChange() {
+            trackFxTrackIndex = Number(document.getElementById("fxTrackSelect").value) || 0;
+            syncTrackSelector("routingTrackSelect", document.getElementById("fxTrackSelect").value);
+            updateTrackManagerControls();
+            updateRoutingTrackControls();
+            updateFxTrackControls();
+            requestFxList();
+        }
+
+        function syncTrackSelector(selectorId, trackIndex) {
+            const selector = document.getElementById(selectorId);
+            if (!selector || ![...selector.options].some(option => option.value === String(trackIndex))) return false;
+            selector.value = String(trackIndex);
+            return true;
+        }
+
+        function updateTrackControlRail(railId, trackIndex) {
+            const track = tracksData.find(item => item.idx === trackIndex);
+            const isMaster = trackIndex === 0;
+            const volume = isMaster ? masterVolVal : (track?.vol ?? 0);
+            const rail = document.getElementById(railId);
+            if (!rail) return;
+            const faderZone = rail.querySelector(".fx-track-fader-zone");
+            const faderCap = rail.querySelector(".fx-track-fader-cap");
+            rail.querySelector(".fx-track-control-index").textContent = isMaster ? "MASTER" : `TR ${trackIndex}`;
+            rail.querySelector(".fx-track-control-title").textContent = isMaster ? "MASTER" : (track?.name || `Track ${trackIndex}`);
+            rail.querySelector(".fx-track-db").textContent = `${volToDb(volume)} dB`;
+            rail.querySelector(".fx-track-meter").style.height = isMaster
+                ? (document.getElementById("masterMeter").style.height || "0%")
+                : `${volToMeterPct(track?.peakL ?? -1500)}%`;
+            faderZone.setAttribute("aria-valuenow", String(volume));
+            faderZone.setAttribute("aria-valuetext", `${volToDb(volume)} dB`);
+            setFaderCapPosition(faderZone, faderCap, volume);
+
+            const trackActions = [["MUTE", 8, "mute"], ["SOLO", 16, "solo"], ["RECARM", 64, "rec"]];
+            trackActions.forEach(([action, flag, className]) => {
+                const button = rail.querySelector(`[data-track-state="${action}"]`);
+                const active = Boolean(track && (track.flags & flag));
+                button.disabled = !track;
+                button.setAttribute("aria-pressed", String(active));
+                button.className = `c-btn ${className}${active ? " active" : ""}`;
+            });
+
+            const pan = rail.querySelector(".fx-track-pan");
+            pan.disabled = !track;
+            pan.value = track ? String(track.pan) : "0";
+            rail.querySelector(".fx-track-pan-value").textContent = track ? formatPan(track.pan) : "C";
+        }
+
+        function updateFxTrackControls() {
+            updateTrackControlRail("fxTrackRail", Number(document.getElementById("fxTrackSelect").value) || 0);
+        }
+
+        function updateRoutingTrackControls() {
+            updateTrackControlRail("routingTrackRail", Number(document.getElementById("routingTrackSelect").value) || 0);
+        }
+
+        function updateTrackManagerControls() {
+            document.getElementById("trackFxControlRail").dataset.trackIndex = String(trackFxTrackIndex);
+            updateTrackControlRail("trackFxControlRail", trackFxTrackIndex);
+        }
+
+        function setSelectedTrackVolume(trackIndex, value) {
+            const volume = Math.max(0, Math.min(MAX_VOL, Number(value) || 0));
+            if (trackIndex === 0) {
+                masterVolVal = volume;
+                const masterZone = document.getElementById("masterFaderZone");
+                setFaderCapPosition(masterZone, document.getElementById("masterFaderCap"), volume);
+                document.getElementById("masterDb").textContent = `${volToDb(volume)} dB`;
+            } else {
+                const track = tracksData.find(item => item.idx === trackIndex);
+                if (!track) return;
+                track.vol = volume;
+                const zone = document.getElementById(`fader-zone-${trackIndex}`);
+                setFaderCapPosition(zone, document.getElementById(`fader-cap-${trackIndex}`), volume);
+                document.getElementById(`db-val-${trackIndex}`).textContent = `${volToDb(volume)} dB`;
+            }
+            if (Number(document.getElementById("fxTrackSelect").value) === trackIndex) updateFxTrackControls();
+            if (Number(document.getElementById("routingTrackSelect").value) === trackIndex) updateRoutingTrackControls();
+            if (trackFxTrackIndex === trackIndex) updateTrackManagerControls();
+            if (typeof wwr_req === "function") wwr_req(`SET/TRACK/${trackIndex}/VOL/${volume.toFixed(4)}`);
+        }
+
+        function setSelectedTrackPan(trackIndex, value) {
+            const track = tracksData.find(item => item.idx === trackIndex);
+            if (!track) return;
+            const pan = clampPan(Number(value));
+            track.pan = pan;
+            updatePanUi(trackIndex, pan, true);
+            if (Number(document.getElementById("fxTrackSelect").value) === trackIndex) updateFxTrackControls();
+            if (Number(document.getElementById("routingTrackSelect").value) === trackIndex) updateRoutingTrackControls();
+            if (trackFxTrackIndex === trackIndex) updateTrackManagerControls();
+            if (typeof wwr_req === "function") wwr_req(`SET/TRACK/${trackIndex}/PAN/${pan.toFixed(4)}`);
+        }
+
+        function sendTrackFxRequest(command, ...arguments_) {
+            if (typeof wwr_req !== "function") {
+                document.getElementById("trackFxStatus").textContent = "REAPER Web Control is not connected.";
+                return null;
+            }
+            trackFxRequestId = ++fxRequestId;
+            const request = [command, trackFxRequestId, ...arguments_].join("|");
+            wwr_req(`SET/EXTSTATE/REAPER_FX_UI/request/${request}`);
+            if (trackFxRequestTimer) clearTimeout(trackFxRequestTimer);
+            trackFxRequestTimer = setTimeout(() => {
+                document.getElementById("trackFxStatus").textContent = "No response. Restart FX_Control_Bridge.lua in REAPER to enable track FX controls.";
+            }, 2500);
+            return trackFxRequestId;
+        }
+
+        function openTrackFxManager(trackIndex) {
+            trackFxTrackIndex = Number(trackIndex) || 0;
+            populateFxTracks(true);
+            populateRoutingTracks();
+            syncTrackSelector("fxTrackSelect", trackFxTrackIndex);
+            syncTrackSelector("routingTrackSelect", trackFxTrackIndex);
+            updateFxTrackControls();
+            updateRoutingTrackControls();
+            updateTrackManagerControls();
+            const track = tracksData.find(item => item.idx === trackFxTrackIndex);
+            const trackName = trackFxTrackIndex === 0 ? "MASTER" : (track?.name || `Track ${trackFxTrackIndex}`);
+            document.getElementById("trackFxTitle").textContent = `${trackName} FX`;
+            const dialog = document.getElementById("trackFxDialog");
+            if (!dialog.open) dialog.showModal();
+            document.getElementById("trackFxList").replaceChildren();
+            document.getElementById("trackFxStatus").textContent = "Loading track effects...";
+            trackFxInitialSearchPending = true;
+            sendTrackFxRequest("GETTRACKFX", trackFxTrackIndex);
+        }
+
+        function closeTrackFxManager() {
+            document.getElementById("trackFxDialog").close();
+        }
+
+        function scheduleInstalledFxSearch() {
+            if (trackFxSearchTimer) clearTimeout(trackFxSearchTimer);
+            trackFxSearchTimer = setTimeout(requestInstalledFxSearch, 250);
+        }
+
+        function requestInstalledFxSearch() {
+            const query = encodeURIComponent(document.getElementById("trackFxSearch").value.trim());
+            sendTrackFxRequest("SEARCHFX", query);
+        }
+
+        function addTrackFx() {
+            const selectedPlugin = document.getElementById("trackFxPluginSelect").value;
+            if (!selectedPlugin) return;
+            trackFxPendingSelectionIndex = document.querySelectorAll("#trackFxList .trackfx-row").length;
+            sendTrackFxRequest("TRACKFXACTION", trackFxTrackIndex, "ADD_TRACK_FX", -1, encodeURIComponent(selectedPlugin));
+            document.getElementById("trackFxStatus").textContent = "Adding effect...";
+        }
+
+        function trackFxAction(action, fxIndex) {
+            const requestId = sendTrackFxRequest("TRACKFXACTION", trackFxTrackIndex, action, fxIndex, "");
+            if (requestId !== null && (action === "TOGGLE_TRACK_FX" || action === "DELETE_TRACK_FX")) {
+                trackFxPendingMutation = { requestId, action, fxIndex: Number(fxIndex) };
+            }
+        }
+
+        function renderTrackFx(records) {
+            const container = document.getElementById("trackFxList");
+            container.replaceChildren();
+            const entries = records ? records.split(";").filter(Boolean) : [];
+            if (!entries.length) {
+                const empty = document.createElement("div");
+                empty.className = "routing-empty";
+                empty.textContent = "No effects inserted on this track.";
+                container.append(empty);
+                return;
+            }
+            entries.forEach(record => {
+                const [index, enabled, encodedName, windowOpen] = record.split(",");
+                const row = document.createElement("div");
+                row.className = "trackfx-row";
+                const name = document.createElement("button");
+                name.type = "button";
+                name.className = "trackfx-name";
+                name.textContent = decodeFxField(encodedName);
+                name.title = name.textContent;
+                name.setAttribute("aria-label", `Open ${name.textContent}`);
+                name.dataset.fxIndex = String(index);
+                name.dataset.windowOpen = windowOpen === "1" ? "true" : "false";
+                name.addEventListener("click", () => openFxManager(trackFxTrackIndex, Number(index)));
+                const bypass = document.createElement("button");
+                bypass.type = "button";
+                bypass.className = "trackfx-toggle";
+                bypass.setAttribute("aria-pressed", enabled === "1" ? "true" : "false");
+                bypass.textContent = enabled === "1" ? "Enabled" : "Bypassed";
+                bypass.addEventListener("click", () => trackFxAction("TOGGLE_TRACK_FX", index));
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "tool-btn trackfx-delete";
+                remove.setAttribute("aria-label", `Delete ${name.textContent}`);
+                remove.title = "Delete effect";
+                remove.textContent = "×";
+                remove.addEventListener("click", () => {
+                    if (window.confirm(`Delete ${name.textContent}?`)) trackFxAction("DELETE_TRACK_FX", index);
+                });
+                row.append(name, bypass, remove);
+                container.append(row);
+            });
+        }
+
+        function handleTrackFxBridgeReply(fields) {
+            if (fields[1] !== "TRACKFX" && fields[1] !== "FXOPTIONS") return false;
+            if (Number(fields[0]) !== trackFxRequestId) return true;
+            if (trackFxRequestTimer) clearTimeout(trackFxRequestTimer);
+            if (fields[1] === "TRACKFX") {
+                if (Number(fields[2]) !== trackFxTrackIndex) return true;
+                const pendingMutation = trackFxPendingMutation?.requestId === trackFxRequestId ? trackFxPendingMutation : null;
+                if (pendingMutation) trackFxPendingMutation = null;
+                renderTrackFx(fields[3]);
+                if (trackFxPendingSelectionIndex !== null) {
+                    const selectedFxIndex = trackFxPendingSelectionIndex;
+                    trackFxPendingSelectionIndex = null;
+                    document.getElementById("trackFxStatus").textContent = "Track effects updated.";
+                    openFxManager(trackFxTrackIndex, selectedFxIndex);
+                } else {
+                    document.getElementById("trackFxStatus").textContent = "Track effects updated.";
+                }
+                if (trackFxInitialSearchPending) {
+                    trackFxInitialSearchPending = false;
+                    requestInstalledFxSearch();
+                }
+                if (pendingMutation && document.getElementById("fxDialog").open
+                    && document.getElementById("fxTrackSelect").value === String(trackFxTrackIndex)) {
+                    const fxSelect = document.getElementById("fxSelect");
+                    const fxCount = fields[3] ? fields[3].split(";").filter(Boolean).length : 0;
+                    if (fxCount === 0) {
+                        requestFxList();
+                    } else {
+                        const selectedFxIndex = Number(fxSelect.value) || 0;
+                        const targetFxIndex = pendingMutation.action === "DELETE_TRACK_FX"
+                            ? Math.min(selectedFxIndex > pendingMutation.fxIndex ? selectedFxIndex - 1 : selectedFxIndex, fxCount - 1)
+                            : selectedFxIndex;
+                        requestFxList(targetFxIndex);
+                    }
+                }
+                return true;
+            }
+            const pluginSelect = document.getElementById("trackFxPluginSelect");
+            pluginSelect.replaceChildren();
+            (fields[3] ? fields[3].split(";") : []).forEach(record => {
+                if (!record) return;
+                const [encodedIdent, encodedName] = record.split(",");
+                pluginSelect.add(new Option(decodeFxField(encodedName), decodeFxField(encodedIdent)));
+            });
+            document.getElementById("addTrackFxButton").disabled = pluginSelect.options.length === 0;
+            if (!pluginSelect.options.length) {
+                document.getElementById("trackFxStatus").textContent = "No installed effects match this search.";
+            }
+            return true;
+        }
+
+        function sendRoutingRequest(command, ...arguments_) {
+            if (typeof wwr_req !== "function") {
+                document.getElementById("routingStatus").textContent = "REAPER Web Control is not connected.";
+                return;
+            }
+            routingRequestId = ++fxRequestId;
+            const request = [command, routingRequestId, ...arguments_].join("|");
+            wwr_req(`SET/EXTSTATE/REAPER_FX_UI/request/${request}`);
+            if (routingRequestTimer) clearTimeout(routingRequestTimer);
+            routingRequestTimer = setTimeout(() => {
+                document.getElementById("routingStatus").textContent = "No response. Restart FX_Control_Bridge.lua in REAPER to enable routing controls.";
+            }, 2500);
+        }
+
+        function openRoutingManager(panel = "io", trackIndex = null) {
+            const dialog = document.getElementById("routingDialog");
+            if (!dialog.open) dialog.showModal();
+            populateRoutingTracks();
+            populateFxTracks(true);
+            const trackSelect = document.getElementById("routingTrackSelect");
+            if (trackIndex !== null && [...trackSelect.options].some(option => option.value === String(trackIndex))) {
+                trackSelect.value = String(trackIndex);
+            }
+            trackFxTrackIndex = Number(trackSelect.value) || 0;
+            syncTrackSelector("fxTrackSelect", trackSelect.value);
+            updateTrackManagerControls();
+            updateFxTrackControls();
+            updateRoutingTrackControls();
+            setRoutingPanel(panel, false);
+            onRoutingTrackChange();
+        }
+
+        function closeRoutingManager() {
+            document.getElementById("routingDialog").close();
+        }
+
+        function setRoutingPanel(panel, refresh = true) {
+            routingPanel = panel === "sends" ? "sends" : "io";
+            const isIO = routingPanel === "io";
+            document.getElementById("routingIOTab").setAttribute("aria-selected", String(isIO));
+            document.getElementById("routingSendsTab").setAttribute("aria-selected", String(!isIO));
+            document.getElementById("routingIOPanel").hidden = !isIO;
+            document.getElementById("routingSendsPanel").hidden = isIO;
+            if (refresh) requestRoutingPanel();
+        }
+
+        function populateRoutingTracks() {
+            const select = document.getElementById("routingTrackSelect");
+            const options = [["MASTER", "0"], ...tracksData.map(track => [`${track.idx}. ${track.name}`, String(track.idx)])];
+            const signature = JSON.stringify(options);
+            if (signature === routingTrackListSignature) return;
+            const previousValue = select.value || "0";
+            select.replaceChildren(...options.map(([label, value]) => new Option(label, value)));
+            select.value = options.some(([, value]) => value === previousValue) ? previousValue : "0";
+            routingTrackListSignature = signature;
+        }
+
+        function onRoutingTrackChange() {
+            const selectedTrack = document.getElementById("routingTrackSelect").value || "0";
+            trackFxTrackIndex = Number(selectedTrack) || 0;
+            syncTrackSelector("fxTrackSelect", selectedTrack);
+            updateTrackManagerControls();
+            updateFxTrackControls();
+            updateRoutingTrackControls();
+            const sendTarget = document.getElementById("routingSendTarget");
+            const targetOptions = tracksData.filter(track => String(track.idx) !== selectedTrack);
+            const previousTarget = sendTarget.value;
+            sendTarget.replaceChildren(...targetOptions.map(track => new Option(`${track.idx}. ${track.name}`, String(track.idx))));
+            if (targetOptions.some(track => String(track.idx) === previousTarget)) sendTarget.value = previousTarget;
+            requestRoutingPanel();
+        }
+
+        function requestRoutingPanel() {
+            const trackIndex = document.getElementById("routingTrackSelect").value || "0";
+            document.getElementById("routingStatus").textContent = "Loading routing...";
+            sendRoutingRequest(routingPanel === "io" ? "GETIO" : "GETROUTES", trackIndex);
+        }
+
+        function setRoutingTrackValue(command, value) {
+            const trackIndex = document.getElementById("routingTrackSelect").value || "0";
+            sendRoutingRequest(command, trackIndex, value);
+        }
+
+        function addHardwareOutput() {
+            const trackIndex = document.getElementById("routingTrackSelect").value || "0";
+            const destination = document.getElementById("hardwareOutputSelect").value;
+            if (destination === "") return;
+            sendRoutingRequest("ADDHW", trackIndex, destination, 0);
+        }
+
+        function addTrackSend() {
+            const trackIndex = document.getElementById("routingTrackSelect").value || "0";
+            const destination = document.getElementById("routingSendTarget").value;
+            if (destination === "") return;
+            sendRoutingRequest("ADDSEND", trackIndex, destination);
+        }
+
+        function setSelectOptions(select, serialized, selectedValue = null) {
+            const options = serialized ? serialized.split(";").filter(Boolean).map(record => {
+                const [value, label] = record.split(",");
+                let translatedLabel = decodeFxField(label || value)
+                    .replace(/^Sin entrada$/, "No input")
+                    .replace(/^Sin salida MIDI$/, "No MIDI output")
+                    .replace(/^MIDI: todas las entradas$/, "MIDI: all inputs")
+                    .replace(/ - todos los canales$/, " - all channels")
+                    .replace(/ - canal (\d+)$/, " - channel $1")
+                    .replace(/^Entrada (\d+)/, "Input $1")
+                    .replace(/^Salida (\d+)/, "Output $1");
+                if (translatedLabel === "MIDI:" || translatedLabel === "MIDI: ") {
+                    const midiInputNumber = Math.floor((Number(value) - 4096) / 32) + 1;
+                    translatedLabel = `MIDI: Input ${midiInputNumber}`;
+                }
+                return new Option(translatedLabel, value);
+            }) : [];
+            select.replaceChildren(...options);
+            if (selectedValue !== null) {
+                if (![...select.options].some(option => option.value === String(selectedValue))) {
+                    select.add(new Option(`Current (${selectedValue})`, String(selectedValue)));
+                }
+                select.value = String(selectedValue);
+            }
+        }
+
+        function handleRoutingBridgeReply(fields) {
+            if (fields[1] !== "IO" && fields[1] !== "ROUTES") return false;
+            if (Number(fields[0]) !== routingRequestId) return true;
+            if (routingRequestTimer) clearTimeout(routingRequestTimer);
+            if (!document.getElementById("routingDialog").open) return true;
+            const trackIndex = document.getElementById("routingTrackSelect").value || "0";
+            if (fields[2] !== trackIndex) return true;
+
+            if (fields[1] === "IO") {
+                setSelectOptions(document.getElementById("routeInputSelect"), fields[6], fields[3]);
+                document.getElementById("routeMainSend").checked = fields[4] === "1";
+                setSelectOptions(document.getElementById("hardwareOutputSelect"), fields[7]);
+                renderHardwareOutputs(fields[8], trackIndex);
+                setSelectOptions(document.getElementById("routeMidiOutputSelect"), fields[10], fields[9]);
+            } else {
+                const channelCount = Number(fields[3]) || 2;
+                document.getElementById("routingChannelCount").value = String(channelCount);
+                const trackOptions = (fields[4] || "").split(";").filter(Boolean).map(record => {
+                    const [index, encodedName, channels] = record.split(",");
+                    return { index, name: decodeFxField(encodedName), channels: Number(channels) || 2 };
+                });
+                routingTrackChannels = new Map(trackOptions.map(track => [track.index, track.channels]));
+                const target = document.getElementById("routingSendTarget");
+                const previousTarget = target.value;
+                target.replaceChildren(...trackOptions.filter(track => track.index !== trackIndex).map(track => new Option(`${track.index}. ${track.name}`, track.index)));
+                if (trackOptions.some(track => track.index === previousTarget && track.index !== trackIndex)) target.value = previousTarget;
+                renderRoutingRows(document.getElementById("routingSendList"), fields[5], "send", trackIndex, channelCount);
+                renderRoutingRows(document.getElementById("routingReceiveList"), fields[6], "receive", trackIndex, channelCount);
+            }
+            document.getElementById("routingStatus").textContent = "Routing updated.";
+            return true;
+        }
+
+        function populateFxTracks(skipRequest = false) {
+            const select = document.getElementById("fxTrackSelect");
+            const options = [["MASTER", "0"], ...tracksData.map(track => [`${track.idx}. ${track.name}`, String(track.idx)])];
+            const signature = JSON.stringify(options);
+            if (signature === fxTrackListSignature) return;
+
+            const previousValue = select.value || "0";
+            const previousTrackStillExists = options.some(([, value]) => value === previousValue);
+            select.replaceChildren(...options.map(([label, value]) => new Option(label, value)));
+            select.value = previousTrackStillExists ? previousValue : "0";
+            fxTrackListSignature = signature;
+
+            if (!skipRequest && !previousTrackStillExists && document.getElementById("fxDialog").open) {
+                requestFxList();
+            }
+        }
+
+        function requestFxList(preferredFxIndex = null) {
+            const trackIdx = document.getElementById("fxTrackSelect").value || "0";
+            fxPendingSelection = preferredFxIndex === null ? null : String(preferredFxIndex);
+            document.getElementById("fxParameters").replaceChildren();
+            document.getElementById("fxStatus").textContent = "Solicitando efectos...";
+            sendFxBridgeRequest("LIST", trackIdx);
+        }
+
+        function requestFxParameters() {
+            const trackIdx = document.getElementById("fxTrackSelect").value || "0";
+            const fxIdx = document.getElementById("fxSelect").value;
+            document.getElementById("fxParameters").replaceChildren();
+            if (fxIdx === "") return;
+            document.getElementById("fxStatus").textContent = "Solicitando parámetros...";
+            sendFxBridgeRequest("PARAMS", trackIdx, fxIdx);
+        }
+
+        function setFxParameter(trackIdx, fxIdx, paramIdx, value, readout) {
+            readout.textContent = Number(value).toFixed(3);
+            if (typeof wwr_req === "function") {
+                wwr_req(`SET/EXTSTATE/REAPER_FX_UI/request/SET|${++fxRequestId}|${trackIdx}|${fxIdx}|${paramIdx}|${value}`);
+            }
+        }
+
+        function decodeFxField(value) {
+            try { return decodeURIComponent(value); } catch { return value; }
+        }
+
+        function createRoutingSelect(labelText, optionPairs, selectedValue, onChange) {
+            const label = document.createElement("label");
+            label.className = "routing-field";
+            const title = document.createElement("span");
+            title.textContent = labelText;
+            const select = document.createElement("select");
+            optionPairs.forEach(([text, value]) => select.add(new Option(text, String(value))));
+            if (![...select.options].some(option => option.value === String(selectedValue))) {
+                select.add(new Option(`Current (${selectedValue})`, String(selectedValue)));
+            }
+            select.value = String(selectedValue);
+            select.addEventListener("change", () => onChange(Number(select.value)));
+            label.append(title, select);
+            return label;
+        }
+
+        function createRoutingRange(labelText, min, max, step, value, readoutText, onChange) {
+            const label = document.createElement("label");
+            label.className = "routing-field";
+            const title = document.createElement("span");
+            title.textContent = labelText;
+            const row = document.createElement("span");
+            row.className = "routing-range";
+            const input = document.createElement("input");
+            input.type = "range";
+            input.min = String(min);
+            input.max = String(max);
+            input.step = String(step);
+            input.value = String(Math.max(min, Math.min(max, value)));
+            const readout = document.createElement("span");
+            readout.className = "routing-value";
+            readout.textContent = readoutText(Number(input.value));
+            input.addEventListener("input", () => { readout.textContent = readoutText(Number(input.value)); });
+            input.addEventListener("change", () => onChange(Number(input.value)));
+            row.append(input, readout);
+            label.append(title, row);
+            return label;
+        }
+
+        function buildSourceChannelOptions(channelCount) {
+            const options = [];
+            if (channelCount > 2) options.push([`All (${channelCount} channels)`, (channelCount / 2) * 1024]);
+            for (let channel = 0; channel < channelCount; channel += 2) {
+                options.push([`Stereo ${channel + 1}-${channel + 2}`, channel]);
+            }
+            for (let channel = 0; channel < channelCount; channel += 1) {
+                options.push([`Mono ${channel + 1}`, 1024 + channel]);
+            }
+            return options;
+        }
+
+        function buildDestinationChannelOptions(channelCount) {
+            const options = [];
+            for (let channel = 0; channel < channelCount; channel += 2) {
+                options.push([`Stereo ${channel + 1}-${channel + 2}`, channel]);
+            }
+            for (let channel = 0; channel < channelCount; channel += 1) {
+                options.push([`Mono ${channel + 1}`, 1024 + channel]);
+            }
+            return options;
+        }
+
+        function renderHardwareOutputs(serialized, trackIndex) {
+            const container = document.getElementById("hardwareOutputList");
+            container.replaceChildren();
+            const records = serialized ? serialized.split(";").filter(Boolean) : [];
+            if (!records.length) {
+                const empty = document.createElement("div");
+                empty.className = "routing-empty";
+                empty.textContent = "No hardware outputs assigned.";
+                container.append(empty);
+                return;
+            }
+            const sourceChannels = Number(document.getElementById("routingChannelCount").value) || 2;
+            records.forEach(record => {
+                const [index, encodedName, volume, pan, muted, source, destination] = record.split(",");
+                const row = document.createElement("article");
+                row.className = "routing-row";
+                const header = document.createElement("div");
+                header.className = "routing-row-header";
+                const title = document.createElement("div");
+                title.className = "routing-row-title";
+                title.textContent = decodeFxField(encodedName);
+                const actions = document.createElement("div");
+                actions.className = "routing-row-actions";
+                const mute = document.createElement("button");
+                mute.type = "button";
+                mute.className = `c-btn mute${muted === "1" ? " active" : ""}`;
+                mute.setAttribute("aria-label", "Mute hardware output");
+                mute.textContent = "M";
+                mute.addEventListener("click", () => sendRoutingRequest("SETHW", trackIndex, index, "B_MUTE", muted === "1" ? 0 : 1));
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "tool-btn routing-remove";
+                remove.setAttribute("aria-label", "Remove hardware output");
+                remove.textContent = "×";
+                remove.addEventListener("click", () => sendRoutingRequest("REMOVEHW", trackIndex, index));
+                actions.append(mute, remove);
+                header.append(title, actions);
+
+                const controls = document.createElement("div");
+                controls.className = "routing-send-controls";
+                controls.append(createRoutingRange("Level", 0, 2, 0.01, Number(volume), value => `${volToDb(value)} dB`, value => sendRoutingRequest("SETHW", trackIndex, index, "D_VOL", value)));
+                controls.append(createRoutingRange("Pan", -1, 1, 0.01, Number(pan), value => formatPan(value), value => sendRoutingRequest("SETHW", trackIndex, index, "D_PAN", value)));
+                controls.append(createRoutingSelect("Source", buildSourceChannelOptions(sourceChannels), Number(source), value => sendRoutingRequest("SETHW", trackIndex, index, "I_SRCCHAN", value)));
+                const outputOptions = [...document.getElementById("hardwareOutputSelect").options].map(option => [option.textContent, option.value]);
+                controls.append(createRoutingSelect("Destination", outputOptions, Number(destination), value => sendRoutingRequest("SETHW", trackIndex, index, "I_DSTCHAN", value)));
+                row.append(header, controls);
+                container.append(row);
+            });
+        }
+
+        function renderRoutingRows(container, serialized, kind, trackIndex, channelCount) {
+            container.replaceChildren();
+            const records = serialized ? serialized.split(";").filter(Boolean) : [];
+            if (!records.length) {
+                const empty = document.createElement("div");
+                empty.className = "routing-empty";
+                empty.textContent = kind === "send" ? "No sends assigned." : "No receives.";
+                container.append(empty);
+                return;
+            }
+            records.forEach(record => {
+                const [index, peerIndex, encodedName, volume, pan, muted, mode, source, destination, peerChannelsValue] = record.split(",");
+                const peerChannels = Number(peerChannelsValue) || routingTrackChannels.get(peerIndex) || 2;
+                const sourceChannels = kind === "send" ? channelCount : peerChannels;
+                const destinationChannels = kind === "send" ? peerChannels : channelCount;
+                const command = kind === "send" ? "SETSEND" : "SETRECV";
+                const removeCommand = kind === "send" ? "REMOVESEND" : "REMOVERECV";
+                const row = document.createElement("article");
+                row.className = "routing-row";
+                const header = document.createElement("div");
+                header.className = "routing-row-header";
+                const title = document.createElement("div");
+                title.className = "routing-row-title";
+                title.textContent = decodeFxField(encodedName);
+                const actions = document.createElement("div");
+                actions.className = "routing-row-actions";
+                const mute = document.createElement("button");
+                mute.type = "button";
+                mute.className = `c-btn mute${muted === "1" ? " active" : ""}`;
+                mute.setAttribute("aria-label", "Mute routing connection");
+                mute.textContent = "M";
+                mute.addEventListener("click", () => sendRoutingRequest(command, trackIndex, index, "B_MUTE", muted === "1" ? 0 : 1));
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "tool-btn routing-remove";
+                remove.setAttribute("aria-label", kind === "send" ? "Remove send" : "Remove receive");
+                remove.textContent = "×";
+                remove.addEventListener("click", () => sendRoutingRequest(removeCommand, trackIndex, index));
+                actions.append(mute, remove);
+                header.append(title, actions);
+
+                const controls = document.createElement("div");
+                controls.className = "routing-send-controls";
+                controls.append(createRoutingRange("Level", 0, 2, 0.01, Number(volume), value => `${volToDb(value)} dB`, value => sendRoutingRequest(command, trackIndex, index, "D_VOL", value)));
+                controls.append(createRoutingRange("Pan", -1, 1, 0.01, Number(pan), value => formatPan(value), value => sendRoutingRequest(command, trackIndex, index, "D_PAN", value)));
+                controls.append(createRoutingSelect("Mode", [["Post-fader", 0], ["Pre-FX", 1], ["Post-FX / pre-fader", 3]], Number(mode), value => sendRoutingRequest(command, trackIndex, index, "I_SENDMODE", value)));
+                controls.append(createRoutingSelect("Source", buildSourceChannelOptions(sourceChannels), Number(source), value => sendRoutingRequest(command, trackIndex, index, "I_SRCCHAN", value)));
+                controls.append(createRoutingSelect("Destination channels", buildDestinationChannelOptions(destinationChannels), Number(destination), value => sendRoutingRequest(command, trackIndex, index, "I_DSTCHAN", value)));
+                row.append(header, controls);
+                container.append(row);
+            });
+        }
+
+        function handleFxBridgeReply(parts) {
+            if (parts[1] !== "REAPER_FX_UI" || parts[2] !== "response" || !parts[3]) return;
+            if (parts[3] === lastFxResponse) return;
+            lastFxResponse = parts[3];
+            let fields = parts[3].split("|");
+            if (handleRoutingBridgeReply(fields)) return;
+            if (handleTrackFxBridgeReply(fields)) return;
+            if (fields[1] === "ERROR" && Number(fields[0]) === trackFxRequestId && document.getElementById("trackFxDialog").open) {
+                if (trackFxRequestTimer) clearTimeout(trackFxRequestTimer);
+                document.getElementById("trackFxStatus").textContent = decodeFxField(fields.slice(2).join("|"));
+                return;
+            }
+            if (fields[1] === "ERROR" && Number(fields[0]) === routingRequestId) {
+                if (routingRequestTimer) clearTimeout(routingRequestTimer);
+                document.getElementById("routingStatus").textContent = decodeFxField(fields.slice(2).join("|"));
+                return;
+            }
+            if (fields[0] === "READY") {
+                if (!fxRequestTimer) {
+                    document.getElementById("fxStatus").textContent = "Bridge conectado. Selecciona una pista y un efecto.";
+                }
+                return;
+            }
+            if (fields[1] === "PROGRESS") {
+                if (Number(fields[0]) !== progressRequestId) return;
+                if (progressRequestTimer) clearTimeout(progressRequestTimer);
+                progressRequestTimer = null;
+                progressRequestId = null;
+                const [currentSeconds, totalSeconds] = (fields[2] || "0,0").split(",");
+                updateTransportProgress(formatSecondsToClock(Number(currentSeconds) || 0), formatSecondsToClock(Number(totalSeconds) || 0));
+                return;
+            }
+            if (Number(fields[0]) !== fxPendingRequestId) return;
+            if (fxRequestTimer) clearTimeout(fxRequestTimer);
+            fxPendingRequestId = null;
+            if (fields[1] === "ERROR") {
+                if (pendingTrackRename?.requestId === Number(fields[0])) {
+                    const track = tracksData.find(item => item.idx === pendingTrackRename.trackIdx);
+                    if (track) track.name = pendingTrackRename.oldName;
+                    pendingTrackRename = null;
+                    renderTracks();
+                }
+                const errorMessage = decodeFxField(fields.slice(2).join("|"));
+                if (trackManagerPendingRequestId === Number(fields[0])) {
+                    trackManagerPendingRequestId = null;
+                    if (document.getElementById("trackManagerDialog").open) {
+                        document.getElementById("trackManagerStatus").textContent = errorMessage;
+                        renderTrackManagerList(true);
+                    }
+                }
+                document.getElementById("fxStatus").textContent = errorMessage;
+                return;
+            }
+
+            if (fields[1] === "TRACKNAME") {
+                const trackIndex = Number(fields[2]);
+                const track = tracksData.find(item => item.idx === trackIndex);
+                if (track) track.name = decodeFxField(fields[3]);
+                if (pendingTrackRename?.requestId === Number(fields[0])) pendingTrackRename = null;
+                renderTracks();
+                populateFxTracks();
+                populateRoutingTracks();
+                if (document.getElementById("fxDialog").open) updateFxTrackControls();
+                if (document.getElementById("routingDialog").open) updateRoutingTrackControls();
+                if (document.getElementById("trackFxDialog").open) updateTrackManagerControls();
+                if (document.getElementById("trackManagerDialog").open) renderTrackManagerList();
+                return;
+            }
+
+            if (fields[1] === "TRACKDELETED") {
+                const deletedTrackIndex = Number(fields[2]);
+                tracksData = tracksData
+                    .filter(track => track.idx !== deletedTrackIndex)
+                    .map(track => ({ ...track, idx: track.idx > deletedTrackIndex ? track.idx - 1 : track.idx }));
+                document.getElementById("channelsContainer").replaceChildren();
+                renderTracks();
+                populateFxTracks();
+                populateRoutingTracks();
+                if (document.getElementById("fxDialog").open) updateFxTrackControls();
+                if (document.getElementById("routingDialog").open) updateRoutingTrackControls();
+                if (document.getElementById("trackFxDialog").open) updateTrackManagerControls();
+                if (trackManagerPendingRequestId === Number(fields[0])) {
+                    trackManagerPendingRequestId = null;
+                    document.getElementById("trackManagerStatus").textContent = "Pista eliminada.";
+                }
+                if (document.getElementById("trackManagerDialog").open) renderTrackManagerList();
+                return;
+            }
+
+            if (fields[1] === "TRACKMOVED") {
+                const sourceIndex = Number(fields[2]);
+                const destinationIndex = Number(fields[3]);
+                const sourcePosition = tracksData.findIndex(track => track.idx === sourceIndex);
+                const destinationPosition = destinationIndex === 0
+                    ? tracksData.length
+                    : tracksData.findIndex(track => track.idx === destinationIndex);
+                if (sourcePosition < 0 || destinationPosition < 0) return;
+                const [movedTrack] = tracksData.splice(sourcePosition, 1);
+                const insertPosition = destinationIndex === 0
+                    ? tracksData.length
+                    : destinationPosition - (sourcePosition < destinationPosition ? 1 : 0);
+                tracksData.splice(insertPosition, 0, movedTrack);
+                tracksData = tracksData.map((track, index) => ({ ...track, idx: index + 1 }));
+                document.getElementById("channelsContainer").replaceChildren();
+                renderTracks();
+                populateFxTracks();
+                populateRoutingTracks();
+                if (document.getElementById("fxDialog").open) updateFxTrackControls();
+                if (document.getElementById("routingDialog").open) updateRoutingTrackControls();
+                if (document.getElementById("trackFxDialog").open) updateTrackManagerControls();
+                if (trackManagerPendingRequestId === Number(fields[0])) {
+                    trackManagerPendingRequestId = null;
+                    document.getElementById("trackManagerStatus").textContent = "Orden actualizado.";
+                }
+                if (document.getElementById("trackManagerDialog").open) renderTrackManagerList();
+                return;
+            }
+
+            if (fields[1] === "LIST") {
+                const fxSelect = document.getElementById("fxSelect");
+                fxSelect.replaceChildren();
+                (fields[2] ? fields[2].split(";") : []).forEach(record => {
+                    if (!record) return;
+                    let [idx, enabled, name, paramCount] = record.split(",");
+                    let option = new Option(`${enabled === "1" ? "●" : "○"} ${decodeFxField(name)} (${paramCount})`, idx);
+                    fxSelect.add(option);
+                });
+                if (fxPendingSelection !== null && [...fxSelect.options].some(option => option.value === fxPendingSelection)) {
+                    fxSelect.value = fxPendingSelection;
+                }
+                fxPendingSelection = null;
+                document.getElementById("fxStatus").textContent = fxSelect.options.length ? "Selecciona un efecto para editar sus parámetros." : "No hay efectos en esta cadena.";
+                if (fxSelect.options.length) requestFxParameters();
+                return;
+            }
+
+            if (fields[1] === "PARAMS") {
+                const container = document.getElementById("fxParameters");
+                container.replaceChildren();
+                (fields[2] ? fields[2].split(";") : []).forEach(record => {
+                    if (!record) return;
+                    let [paramIdx, normalized, name] = record.split(",");
+                    let row = document.createElement("label");
+                    row.className = "fx-parameter";
+                    let label = document.createElement("span");
+                    label.className = "fx-parameter-name";
+                    label.textContent = decodeFxField(name);
+                    label.title = label.textContent;
+                    let slider = document.createElement("input");
+                    slider.type = "range";
+                    slider.min = "0";
+                    slider.max = "1";
+                    slider.step = "0.001";
+                    slider.value = normalized;
+                    let value = document.createElement("span");
+                    value.className = "fx-parameter-value";
+                    value.textContent = Number(normalized).toFixed(3);
+                    slider.addEventListener("input", () => setFxParameter(document.getElementById("fxTrackSelect").value, document.getElementById("fxSelect").value, paramIdx, slider.value, value));
+                    row.append(label, slider, value);
+                    container.append(row);
+                });
+                document.getElementById("fxStatus").textContent = `${container.children.length} parámetros disponibles. Los valores del slider están normalizados.`;
+            }
+        }
+
+        function toggleTrackState(trackIdx, field) {
+            const states = {
+                MUTE: { flag: 8, button: `btn-mute-${trackIdx}` },
+                SOLO: { flag: 16, button: `btn-solo-${trackIdx}` },
+                RECARM: { flag: 64, button: `btn-rec-${trackIdx}` }
+            };
+            const state = states[field];
+            const track = tracksData.find(item => item.idx === trackIdx);
+            if (!state || !track || typeof wwr_req !== "function") return;
+
+            wwr_req(`SET/TRACK/${trackIdx}/${field}/-1`);
+            track.flags ^= state.flag;
+            const button = document.getElementById(state.button);
+            if (button) button.classList.toggle("active", (track.flags & state.flag) !== 0);
+            if (document.getElementById("fxDialog").open && Number(document.getElementById("fxTrackSelect").value) === trackIdx) {
+                updateFxTrackControls();
+            }
+            if (document.getElementById("routingDialog").open && Number(document.getElementById("routingTrackSelect").value) === trackIdx) {
+                updateRoutingTrackControls();
+            }
+            if (document.getElementById("trackFxDialog").open && trackFxTrackIndex === trackIdx) {
+                updateTrackManagerControls();
+            }
+        }
+
+        function createTrackTitleElement(track) {
+            const title = document.createElement("div");
+            title.className = "track-title";
+            title.id = `t-name-${track.idx}`;
+            title.textContent = track.name || "New track";
+            title.title = "Click or tap to rename";
+            title.setAttribute("role", "button");
+            title.setAttribute("tabindex", "0");
+            title.setAttribute("aria-label", `Rename track ${track.idx}: ${track.name || "New track"}`);
+            title.addEventListener("click", () => beginTrackNameEdit(track.idx));
+            title.addEventListener("keydown", event => {
+                if (event.key !== "F2" && event.key !== "Enter") return;
+                event.preventDefault();
+                beginTrackNameEdit(track.idx);
+            });
+            return title;
+        }
+
+        function openTrackManager() {
+            renderTrackManagerList(true);
+            document.getElementById("trackManagerStatus").textContent = "";
+            document.getElementById("trackManagerDialog").showModal();
+        }
+
+        function closeTrackManager() {
+            document.getElementById("trackManagerDialog").close();
+        }
+
+        function requestTrackManagerAction(command, ...arguments_) {
+            if (trackManagerPendingRequestId !== null) return;
+            trackManagerPendingRequestId = sendFxBridgeRequest(command, ...arguments_);
+            document.getElementById("trackManagerStatus").textContent = trackManagerPendingRequestId === null
+                ? "Web Control de REAPER no está conectado."
+                : "Actualizando pistas...";
+            renderTrackManagerList(true);
+        }
+
+        function moveTrackFromManager(trackIndex, direction) {
+            const trackCount = tracksData.length;
+            if (direction < 0 && trackIndex <= 1) return;
+            if (direction > 0 && trackIndex >= trackCount) return;
+            const destinationIndex = direction < 0
+                ? trackIndex - 1
+                : (trackIndex === trackCount - 1 ? 0 : trackIndex + 2);
+            requestTrackManagerAction("MOVETRACK", trackIndex, destinationIndex);
+        }
+
+        function renderTrackManagerList(force = false) {
+            const list = document.getElementById("trackManagerList");
+            if (!list) return;
+            const signature = JSON.stringify(tracksData.map(track => [track.idx, track.name]));
+            if (!force && signature === trackManagerRenderedSignature) return;
+            const scrollTop = list.scrollTop;
+            list.replaceChildren();
+            tracksData.forEach(track => {
+                const row = document.createElement("div");
+                row.className = "track-manager-row";
+                const name = document.createElement("div");
+                name.className = "track-manager-name";
+                const indexLabel = document.createElement("span");
+                indexLabel.className = "track-manager-index";
+                indexLabel.textContent = `TR ${track.idx}`;
+                name.append(indexLabel, document.createTextNode(track.name || "New track"));
+
+                const up = document.createElement("button");
+                up.className = "tool-btn track-manager-action";
+                up.type = "button";
+                up.textContent = "↑";
+                up.setAttribute("aria-label", `Move track ${track.idx} up`);
+                up.disabled = track.idx === 1 || trackManagerPendingRequestId !== null;
+                up.addEventListener("click", () => moveTrackFromManager(track.idx, -1));
+
+                const down = document.createElement("button");
+                down.className = "tool-btn track-manager-action";
+                down.type = "button";
+                down.textContent = "↓";
+                down.setAttribute("aria-label", `Move track ${track.idx} down`);
+                down.disabled = track.idx === tracksData.length || trackManagerPendingRequestId !== null;
+                down.addEventListener("click", () => moveTrackFromManager(track.idx, 1));
+
+                const remove = document.createElement("button");
+                remove.className = "tool-btn track-manager-action track-manager-delete";
+                remove.type = "button";
+                remove.textContent = "×";
+                remove.setAttribute("aria-label", `Delete track ${track.idx}: ${track.name || "New track"}`);
+                remove.disabled = trackManagerPendingRequestId !== null;
+                remove.addEventListener("click", () => {
+                    if (window.confirm(`¿Eliminar la pista "${track.name || `TR ${track.idx}`}"? Puedes deshacerlo en REAPER.`)) {
+                        requestTrackManagerAction("DELETETRACK", track.idx);
+                    }
+                });
+
+                row.append(name, up, down, remove);
+                list.append(row);
+            });
+            list.scrollTop = scrollTop;
+            trackManagerRenderedSignature = signature;
+        }
+
+        function beginTrackNameEdit(trackIdx) {
+            const track = tracksData.find(item => item.idx === trackIdx);
+            const title = document.getElementById(`t-name-${trackIdx}`);
+            if (!track || !title || editingTrackNameIndex !== null) return;
+
+            const input = document.createElement("input");
+            input.className = "track-title-editor";
+            input.id = title.id;
+            input.type = "text";
+            input.value = track.name;
+            input.setAttribute("aria-label", `Edit track ${trackIdx} name`);
+            input.maxLength = 128;
+            editingTrackNameIndex = trackIdx;
+
+            const finish = save => {
+                if (editingTrackNameIndex !== trackIdx) return;
+                editingTrackNameIndex = null;
+                const nextName = input.value.trim();
+                if (save && nextName !== track.name) {
+                    const oldName = track.name;
+                    track.name = nextName;
+                    const requestId = sendFxBridgeRequest("SETTRACKNAME", trackIdx, encodeURIComponent(nextName));
+                    if (requestId === null) {
+                        track.name = oldName;
+                    } else {
+                        pendingTrackRename = { requestId, trackIdx, oldName };
+                    }
+                }
+                input.replaceWith(createTrackTitleElement(track));
+            };
+
+            input.addEventListener("keydown", event => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    finish(true);
+                } else if (event.key === "Escape") {
+                    event.preventDefault();
+                    finish(false);
+                }
+            });
+            input.addEventListener("blur", () => finish(true));
+            title.replaceWith(input);
+            input.focus();
+            input.select();
+        }
+
+        function attachFaderTouch(element, onDragCallback) {
+            let dragging = false;
+            function processTouch(e) {
+                let rect = element.getBoundingClientRect();
+                let touchY = (e.touches ? e.touches[0].clientY : e.clientY);
+                let pct = 1 - ((touchY - rect.top - 14) / (rect.height - 28));
+                pct = Math.max(0, Math.min(1, pct));
+                onDragCallback(faderPosToVol(pct));
+            }
+            element.addEventListener('touchstart', (e) => { dragging = true; processTouch(e); }, { passive: false });
+            element.addEventListener('touchmove', (e) => { if (dragging) { e.preventDefault(); processTouch(e); } }, { passive: false });
+            element.addEventListener('touchend', () => { dragging = false; });
+            element.addEventListener('mousedown', (e) => { dragging = true; processTouch(e); });
+            window.addEventListener('mousemove', (e) => { if (dragging) processTouch(e); });
+            window.addEventListener('mouseup', () => { dragging = false; });
+        }
+
+        function setFaderCapPosition(zoneEl, capEl, normalizedVol) {
+            let height = zoneEl.clientHeight - 28;
+            let yPos = (1 - volToFaderPos(normalizedVol)) * height;
+            capEl.style.transform = `translateY(${yPos - (height/2)}px)`;
+        }
+
+        function formatSecondsToClock(seconds) {
+            const total = Math.max(0, Number(seconds) || 0);
+            const hrs = Math.floor(total / 3600);
+            const mins = Math.floor((total % 3600) / 60);
+            const secs = Math.floor(total % 60);
+            if (hrs > 0) return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function parseTimecodeToSeconds(value) {
+            if (value === undefined || value === null || value === "") return 0;
+            const cleaned = String(value).replace(/[^0-9:.\-]/g, "");
+            if (!cleaned) return 0;
+            const parts = cleaned.split(":").map(part => Number(part));
+            if (parts.length === 3) {
+                return (parts[0] * 3600) + (parts[1] * 60) + (parts[2] || 0);
+            }
+            if (parts.length === 2) {
+                return (parts[0] * 60) + (parts[1] || 0);
+            }
+            if (parts.length === 1) {
+                return Number(parts[0]) || 0;
+            }
+            return 0;
+        }
+
+        function updateTransportProgress(currentTimecode, totalTimecode) {
+            const current = document.getElementById('transportCurrentTime');
+            const total = document.getElementById('transportTotalTime');
+            const fill = document.getElementById('transportProgressFill');
+            const fxCurrent = document.getElementById('fxTransportCurrentTime');
+            const fxTotal = document.getElementById('fxTransportTotalTime');
+            const fxFill = document.getElementById('fxTransportProgressFill');
+            const routingCurrent = document.getElementById('routingTransportCurrentTime');
+            const routingTotal = document.getElementById('routingTransportTotalTime');
+            const routingFill = document.getElementById('routingTransportProgressFill');
+            const trackFxCurrent = document.getElementById('trackFxTransportCurrentTime');
+            const trackFxTotal = document.getElementById('trackFxTransportTotalTime');
+            const trackFxFill = document.getElementById('trackFxTransportProgressFill');
+
+            let currentText = currentTimecode && currentTimecode !== "" ? currentTimecode : "00:00:00";
+            let totalText = totalTimecode && totalTimecode !== "" ? totalTimecode : currentText;
+            let currentSeconds = parseTimecodeToSeconds(currentText);
+            let totalSeconds = parseTimecodeToSeconds(totalText) || currentSeconds || 1;
+
+            if (Number.isFinite(Number(currentTimecode)) && !Number.isFinite(Number(totalTimecode))) {
+                const parsedCurrent = Number(currentTimecode) || 0;
+                currentSeconds = parsedCurrent;
+                totalSeconds = Math.max(totalSeconds, parsedCurrent + 1);
+                currentText = formatSecondsToClock(parsedCurrent);
+                totalText = formatSecondsToClock(totalSeconds);
+            }
+
+            const pct = totalSeconds > 0 ? Math.min(100, Math.max(0, (currentSeconds / totalSeconds) * 100)) : 0;
+            transportDurationSeconds = totalSeconds;
+            if (current) current.textContent = currentText;
+            if (total) total.textContent = totalText;
+            if (fill) fill.style.width = `${pct}%`;
+            if (fxCurrent) fxCurrent.textContent = currentText;
+            if (fxTotal) fxTotal.textContent = totalText;
+            if (fxFill) fxFill.style.width = `${pct}%`;
+            if (routingCurrent) routingCurrent.textContent = currentText;
+            if (routingTotal) routingTotal.textContent = totalText;
+            if (routingFill) routingFill.style.width = `${pct}%`;
+            if (trackFxCurrent) trackFxCurrent.textContent = currentText;
+            if (trackFxTotal) trackFxTotal.textContent = totalText;
+            if (trackFxFill) trackFxFill.style.width = `${pct}%`;
+            document.getElementById('transportProgress')?.setAttribute('aria-valuenow', pct.toFixed(1));
+            document.getElementById('fxTransportProgress')?.setAttribute('aria-valuenow', pct.toFixed(1));
+            document.getElementById('routingTransportProgress')?.setAttribute('aria-valuenow', pct.toFixed(1));
+            document.getElementById('trackFxTransportProgress')?.setAttribute('aria-valuenow', pct.toFixed(1));
+        }
+
+        function seekTransportTo(event, progressElement, force = false, startPlayback = false) {
+            if (transportDurationSeconds <= 0) return;
+            const now = performance.now();
+            const rect = progressElement.getBoundingClientRect();
+            const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+            const seconds = ratio * transportDurationSeconds;
+            if (!force && now - lastSeekSentAt < 80) return;
+            progressElement.dataset.lastSeekSeconds = seconds.toFixed(3);
+            lastSeekSentAt = now;
+            updateTransportProgress(formatSecondsToClock(seconds), formatSecondsToClock(transportDurationSeconds));
+            if (typeof wwr_req === "function") {
+                wwr_req(`SET/EXTSTATE/REAPER_FX_UI/request/SEEK|${++fxRequestId}|${seconds.toFixed(3)}`);
+            }
+            if (startPlayback && !document.getElementById('playBtn').classList.contains('active')) {
+                setPlaybackState(true);
+                sendAction('1007');
+            }
+        }
+
+        function attachTransportSeeking(progressElement) {
+            let activePointerId = null;
+            progressElement.addEventListener('pointerdown', event => {
+                event.preventDefault();
+                activePointerId = event.pointerId;
+                progressElement.setPointerCapture(activePointerId);
+                seekTransportTo(event, progressElement, true, true);
+            });
+            progressElement.addEventListener('pointermove', event => {
+                if (event.pointerId === activePointerId) seekTransportTo(event, progressElement);
+            });
+            const finishSeeking = event => {
+                if (event.pointerId !== activePointerId) return;
+                const rect = progressElement.getBoundingClientRect();
+                const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+                const seconds = ratio * transportDurationSeconds;
+                if (Math.abs(seconds - Number(progressElement.dataset.lastSeekSeconds || 0)) >= 0.05) {
+                    seekTransportTo(event, progressElement, true);
+                }
+                activePointerId = null;
+            };
+            progressElement.addEventListener('pointerup', finishSeeking);
+            progressElement.addEventListener('pointercancel', finishSeeking);
+            progressElement.addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const currentSeconds = parseTimecodeToSeconds(document.getElementById('transportCurrentTime').textContent);
+                const targetSeconds = event.key === 'Home' ? 0
+                    : event.key === 'End' ? transportDurationSeconds
+                    : currentSeconds + (event.key === 'ArrowRight' ? 5 : -5);
+                const rect = progressElement.getBoundingClientRect();
+                const ratio = Math.max(0, Math.min(1, targetSeconds / transportDurationSeconds));
+                seekTransportTo({ clientX: rect.left + rect.width * ratio }, progressElement, true);
+            });
+        }
+
+        function requestTransportProgress() {
+            if (typeof wwr_req !== "function" || fxRequestTimer || trackFxRequestTimer || routingRequestTimer || progressRequestId !== null) return;
+            const requestId = ++fxRequestId;
+            progressRequestId = requestId;
+            wwr_req(`SET/EXTSTATE/REAPER_FX_UI/request/PROGRESS|${requestId}`);
+            progressRequestTimer = setTimeout(() => {
+                if (progressRequestId === requestId) progressRequestId = null;
+                progressRequestTimer = null;
+            }, 2000);
+        }
+
+        function wwr_onreply(results) {
+            let pill = document.getElementById('connStatus');
+            pill.innerText = "LIVE";
+            pill.className = "connection-pill connected";
+
+            let lines = results.split("\n");
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                let parts = line.split("\t");
+
+                if (parts[0] === "EXTSTATE") {
+                    if (parts[1] === "REAPER_FX_UI" && parts[2] === "metronome") {
+                        setMetronomeState(parts[3] === "1");
+                    } else if (parts[1] === "REAPER_FX_UI" && parts[2] === "phase") {
+                        const next = (parts[3] || "").split(",").filter(Boolean).map(Number);
+                        if (next.join(",") !== [...phaseTracks].sort((a, b) => a - b).join(",")) {
+                            phaseTracks = new Set(next);
+                            renderTracks();
+                        }
+                    } else {
+                        handleFxBridgeReply(parts);
+                    }
+                }
+
+                if (parts[0] === "TRANSPORT") {
+                    let isPlaying = (parseInt(parts[1]) & 1) !== 0;
+                    let isRecording = (parseInt(parts[1]) & 4) !== 0;
+                    setPlaybackState(isPlaying);
+                    document.getElementById('recBtn').classList.toggle('active', isRecording);
+                    const recBtnFx = document.getElementById('recBtnFx');
+                    const recBtnRouting = document.getElementById('recBtnRouting');
+                    if (recBtnFx) recBtnFx.classList.toggle('active', isRecording);
+                    if (recBtnRouting) recBtnRouting.classList.toggle('active', isRecording);
+                    if (parts[5]) {
+                        document.getElementById('timecodeDisplay').innerText = parts[5];
+                    }
+                } 
+                else if (parts[0] === "MASTER") {
+                    masterVolVal = parseFloat(parts[1]);
+                    // En el Master, parts[6] es el last_meter_peak oficial (dB*10)
+                    let peakVal = parsePeak(parts[6]);
+
+                    let masterZone = document.getElementById('masterFaderZone');
+                    let masterCap = document.getElementById('masterFaderCap');
+                    if (masterZone && masterCap) setFaderCapPosition(masterZone, masterCap, masterVolVal);
+                    document.getElementById('masterDb').innerText = volToDb(masterVolVal) + " dB";
+                    document.getElementById('masterMeter').style.height = volToMeterPct(peakVal) + "%";
+                    if (document.getElementById("fxDialog").open) updateFxTrackControls();
+                    if (document.getElementById("routingDialog").open) updateRoutingTrackControls();
+                    if (document.getElementById("trackFxDialog").open && trackFxTrackIndex === 0) updateTrackManagerControls();
+                }
+                else if (parts[0] === "TRACK") {
+                    let idx = parseInt(parts[1]);
+                    if (idx <= 0) return;
+
+                    let name = parts[2];
+                    let flags = parseInt(parts[3]);
+                    let vol = parseFloat(parts[4]);
+                    let pan = clampPan(parseFloat(parts[5]));
+                    
+                    // En las pistas, parts[6] es exactamente el last_meter_peak oficial (dB*10)
+                    let peakVal = parsePeak(parts[6]);
+
+                    let existing = tracksData.find(t => t.idx === idx);
+                    if (existing) {
+                        existing.name = name;
+                        existing.flags = flags;
+                        existing.vol = vol;
+                        existing.pan = pan;
+                        existing.peakL = peakVal;
+                    } else {
+                        tracksData.push({ idx, name, flags, vol, pan, peakL: peakVal });
+                    }
+                }
+            });
+            renderTracks();
+            if (document.getElementById("trackManagerDialog").open) renderTrackManagerList();
+            if (document.getElementById("fxDialog").open) {
+                populateFxTracks();
+                updateFxTrackControls();
+            }
+            if (document.getElementById("routingDialog").open) {
+                populateRoutingTracks();
+                updateRoutingTrackControls();
+            }
+            if (document.getElementById("trackFxDialog").open) updateTrackManagerControls();
+        }
+        
+        function renderTracks() {
+            const container = document.getElementById('channelsContainer');
+            tracksData.forEach(t => {
+                let stripHtml = document.getElementById(`track-strip-${t.idx}`);
+                let isMuted = (t.flags & 8) !== 0; // Bit 8 confirmado para Mute
+                let isSoloed = (t.flags & 16) !== 0;
+                let isArmed = (t.flags & 64) !== 0;
+
+                if (!stripHtml) {
+                    let strip = document.createElement('div');
+                    strip.className = 'channel-strip';
+                    strip.id = `track-strip-${t.idx}`;
+                    strip.innerHTML = `
+                        <div class="track-info">
+                            <div class="track-idx">TR ${t.idx}</div>
+                        </div>
+                        <div class="fader-touch-zone" id="fader-zone-${t.idx}">
+                            <div class="fader-slot-line"></div>
+                            <div class="vu-meter-bar"><div class="vu-meter-fill" id="meter-fill-${t.idx}"></div></div>
+                            <div class="fader-cap" id="fader-cap-${t.idx}"><div class="fader-cap-notch"></div></div>
+                        </div>
+                        <div class="db-readout" id="db-val-${t.idx}">${volToDb(t.vol)} dB</div>
+                        <div class="pan-control">
+                            <div class="pan-label">PAN</div>
+                            <div class="pan-knob" id="pan-knob-${t.idx}" role="slider" tabindex="0" aria-label="Pan track ${t.idx}" aria-valuemin="-1" aria-valuemax="1" aria-valuenow="0" aria-valuetext="C"></div>
+                            <div class="pan-readout" id="pan-readout-${t.idx}">C</div>
+                        </div>
+                        <div class="channel-btns">
+                            <button class="c-btn mute ${isMuted ? 'active' : ''}" id="btn-mute-${t.idx}" onclick="toggleTrackState(${t.idx}, 'MUTE')">M</button>
+                            <button class="c-btn solo ${isSoloed ? 'active' : ''}" id="btn-solo-${t.idx}" onclick="toggleTrackState(${t.idx}, 'SOLO')">S</button>
+                            <button class="c-btn rec ${isArmed ? 'active' : ''}" id="btn-rec-${t.idx}" onclick="toggleTrackState(${t.idx}, 'RECARM')">ARM</button>
+                            <button class="c-btn phase ${phaseTracks.has(t.idx) ? 'active' : ''}" id="btn-phase-${t.idx}" type="button" aria-label="Invertir fase de la pista ${t.idx}" title="Invertir fase" onclick="togglePhase(${t.idx})">Ø</button>
+                            <button class="c-btn sends" id="btn-sends-${t.idx}" type="button" aria-label="Abrir envíos de la pista ${t.idx}" onclick="openRoutingManager('sends', ${t.idx})">SENDS</button>
+                            <button class="c-btn fx" id="btn-fx-${t.idx}" type="button" aria-label="Abrir efectos de la pista ${t.idx}" onclick="openTrackFxManager(${t.idx})">FX</button>
+                        </div>
+                    `;
+                    strip.querySelector(".track-info").appendChild(createTrackTitleElement(t));
+                    container.appendChild(strip);
+
+                    let zoneEl = document.getElementById(`fader-zone-${t.idx}`);
+                    attachFaderTouch(zoneEl, (pct) => {
+                        t.vol = pct;
+                        setFaderCapPosition(zoneEl, document.getElementById(`fader-cap-${t.idx}`), pct);
+                        document.getElementById(`db-val-${t.idx}`).textContent = volToDb(pct) + " dB";
+                        if (typeof wwr_req === "function") wwr_req(`SET/TRACK/${t.idx}/VOL/${pct.toFixed(4)}`);
+                    });
+                    attachPanKnob(document.getElementById(`pan-knob-${t.idx}`), t.idx, t.pan);
+                }
+
+                const titleElement = document.getElementById(`t-name-${t.idx}`);
+                if (titleElement && titleElement.tagName !== "INPUT" && editingTrackNameIndex !== t.idx) {
+                    titleElement.textContent = t.name || "New track";
+                    titleElement.setAttribute("aria-label", `Rename track ${t.idx}: ${t.name || "New track"}`);
+                }
+                document.getElementById(`db-val-${t.idx}`).textContent = volToDb(t.vol) + " dB";
+                document.getElementById(`meter-fill-${t.idx}`).style.height = volToMeterPct(t.peakL) + "%";
+
+                let zoneEl = document.getElementById(`fader-zone-${t.idx}`);
+                let capEl = document.getElementById(`fader-cap-${t.idx}`);
+                setFaderCapPosition(zoneEl, capEl, t.vol);
+                updatePanUi(t.idx, t.pan);
+
+                document.getElementById(`btn-mute-${t.idx}`).className = `c-btn mute ${isMuted ? 'active' : ''}`;
+                document.getElementById(`btn-solo-${t.idx}`).className = `c-btn solo ${isSoloed ? 'active' : ''}`;
+                document.getElementById(`btn-rec-${t.idx}`).className = `c-btn rec ${isArmed ? 'active' : ''}`;
+                document.getElementById(`btn-phase-${t.idx}`).classList.toggle('active', phaseTracks.has(t.idx));
+            });
+        }
+
+     window.onload = function() {
+            let masterZone = document.getElementById('masterFaderZone');
+            let masterCap = document.getElementById('masterFaderCap');
+
+            attachFaderTouch(masterZone, (pct) => {
+                masterVolVal = pct;
+                setFaderCapPosition(masterZone, masterCap, masterVolVal);
+                document.getElementById('masterDb').innerText = volToDb(masterVolVal) + " dB";
+                
+                if (typeof wwr_req === "function") wwr_req(`SET/TRACK/0/VOL/${pct.toFixed(4)}`);
+            });
+
+            document.querySelectorAll(".fx-track-control-rail").forEach(rail => {
+                const selectorId = rail.dataset.trackSelector;
+                const getTrackIndex = () => selectorId
+                    ? (Number(document.getElementById(selectorId).value) || 0)
+                    : (Number(rail.dataset.trackIndex) || 0);
+                const fader = rail.querySelector(".fx-track-fader-zone");
+                attachFaderTouch(fader, value => setSelectedTrackVolume(getTrackIndex(), value));
+                fader.addEventListener("keydown", event => {
+                    const trackIndex = getTrackIndex();
+                    const track = tracksData.find(item => item.idx === trackIndex);
+                    const volume = trackIndex === 0 ? masterVolVal : (track?.vol ?? 0);
+                    const step = event.shiftKey ? 0.05 : 0.01;
+                    let nextVolume;
+                    if (event.key === "Home") nextVolume = 0;
+                    else if (event.key === "End") nextVolume = MAX_VOL;
+                    else if (event.key === "ArrowUp" || event.key === "ArrowRight") nextVolume = volume + step;
+                    else if (event.key === "ArrowDown" || event.key === "ArrowLeft") nextVolume = volume - step;
+                    else return;
+                    event.preventDefault();
+                    setSelectedTrackVolume(trackIndex, nextVolume);
+                });
+                rail.querySelector(".fx-track-pan").addEventListener("input", event => setSelectedTrackPan(getTrackIndex(), event.currentTarget.value));
+                rail.querySelectorAll("[data-track-state]").forEach(button => {
+                    button.addEventListener("click", () => toggleTrackState(getTrackIndex(), button.dataset.trackState));
+                });
+            });
+
+            if (typeof wwr_start === 'function') {
+                wwr_start();
+                wwr_req_recur("TRANSPORT", 100);
+                wwr_req_recur("MASTER", 100);
+                wwr_req_recur("TRACK", 100);
+                wwr_req_recur("GET/EXTSTATE/REAPER_FX_UI/response", 100);
+                wwr_req_recur("GET/EXTSTATE/REAPER_FX_UI/metronome", 100);
+                wwr_req_recur("GET/EXTSTATE/REAPER_FX_UI/phase", 100);
+            }
+
+            document.querySelectorAll('button[onclick*="40364"]').forEach(button => {
+                button.classList.add("metronome-btn");
+                button.setAttribute("aria-pressed", "false");
+                button.onclick = toggleMetronome;
+            });
+
+            attachTransportSeeking(document.getElementById('transportProgress'));
+            attachTransportSeeking(document.getElementById('fxTransportProgress'));
+            attachTransportSeeking(document.getElementById('routingTransportProgress'));
+            attachTransportSeeking(document.getElementById('trackFxTransportProgress'));
+
+            requestTransportProgress();
+            setInterval(requestTransportProgress, 1000);
+        };
+    </script>
+</body>
+</html>
