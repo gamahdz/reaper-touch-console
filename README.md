@@ -4,7 +4,9 @@ Controlador web táctil para REAPER. Cada usuario lo instala en su propio REAPER
 
 ## Demostración
 
-[Ver recorrido del mixer (20 s, sin audio)](mixer-tour.webm)
+![Vista previa animada del mixer](mixer-tour-preview.gif)
+
+[Ver el video completo (20 s, sin audio)](mixer-tour.webm)
 
 ## Requisitos
 
